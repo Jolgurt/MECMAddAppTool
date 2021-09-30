@@ -12,6 +12,7 @@ For instance, if using a package with the name of “Joes_MostGreatSoftware_1.0�
 In many cases this automates ALL, if not most of, the steps required.
 
 ## Requirements
+*This tool was first written years ago, circa 2016.  It has gone through a few iterations to get to this point.  But I still use it today.*
 - Microsoft .Net Framework 2.0+
 - Microsoft PowerShell 3.0 (minimum); 4.0+ (recommended)
 - Active Directory and SCCM modules, which are included automatically if both AdminTools and Configuration Manager are installed.  *Note: The SCCM cmdlet library may get updated by Microsoft, in which commands within the script may become depreciated or could no longer function.*
@@ -19,8 +20,6 @@ In many cases this automates ALL, if not most of, the steps required.
 #### Files required:
 - SCCMAddAppTool.exe
 - SCCMAddAppSettings.xml
-
-*This tool was first written years ago, circa 2016.  It has gone through a few iterations to get to this point.  But I still use it today.*
 
 ## Configuration
 All custom settings are stored in the settings XML.  This is so the core script does not have to be modified by the user.
@@ -77,3 +76,12 @@ To run the tool, simply double-click the EXE file or right-click the file and se
 It may take a moment before the GUI loads.  This is normal.
 
 If the script fails to run, first check the Execution Policy on your machine. – Run Powershell.exe and enter “get-executionpolicy”.  If it returns Restricted then custom scripts cannot execute.  It’s recommended to change this to RemoteSigned by typing “set-executionpolicy remotesigned”.  Then hit Y to confirm.  (Note, you will not have to do this every time.  Setting the policy is permanent.)
+![Xpolicy](https://user-images.githubusercontent.com/44309802/135490059-44949016-2b07-462c-819d-8cb61daae79c.png)
+
+Then try launching the tool again. 
+
+## How-to Use
+Interface:
+
+![Interface](https://user-images.githubusercontent.com/44309802/135490308-99556bd1-a2dc-4030-9979-8eb688271877.png)
+
