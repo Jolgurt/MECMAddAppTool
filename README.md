@@ -20,6 +20,8 @@ In many cases this automates ALL, if not most of, the steps required.
 - SCCMAddAppTool.exe
 - SCCMAddAppSettings.xml
 
+*This tool was first written years ago, circa 2016.  It has gone through a few iterations to get to this point.  But I still use it today.*
+
 ## Configuration
 All custom settings are stored in the settings XML.  This is so the core script does not have to be modified by the user.
 
