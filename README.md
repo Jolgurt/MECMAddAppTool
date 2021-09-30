@@ -2,11 +2,11 @@
 If consistent packaging standards and naming conventions are in place, this tool allows the packager to automatically create the Active Directory group, Collection, Application, and Deployment in SCCM for a package by providing minimal input.
 
 For instance, if using a package with the name of “Joes_MostGreatSoftware_1.0” and all options were selected, the following would be created by the tool:
-- AD Group: Joes MostGreatSoftware 1.0
-- SCCM Collection: Joes_MostGreatSoftware_1.0-Install
+- **AD Group:** Joes MostGreatSoftware 1.0
+- **SCCM Collection:** Joes_MostGreatSoftware_1.0-Install
   - linked to AD Group
-- SCCM Application: Joes_MostGreatSoftware_1.0
-- SCCM Deployment: Joes_MostGreatSoftware_1.0
+- **SCCM Application:** Joes_MostGreatSoftware_1.0
+- **SCCM Deployment:** Joes_MostGreatSoftware_1.0
   - linked to Collection
 
 In many cases this automates ALL, if not most of, the steps required.
@@ -16,6 +16,7 @@ In many cases this automates ALL, if not most of, the steps required.
 1. [Configuration](#configuration)
 1. [How-to Launch](#howtolaunch)
 1. [How-to Use](#howtouse)
+1. [Example](#example)
 1. [A Personal Note](#personalnote)
 1. [Credits](#credits)
 
@@ -101,6 +102,39 @@ Then try launching the tool again.
 Interface:
 
 ![Interface](https://user-images.githubusercontent.com/44309802/135490308-99556bd1-a2dc-4030-9979-8eb688271877.png)
+
+| <img width=1700/> |  |
+| --- | --- |
+| ![Interface1](https://user-images.githubusercontent.com/44309802/135515805-6f82194f-b5e0-494c-bfed-66de6d23af6d.png) | Enter the package name in the textbox.  Must be in the format shown.  The delimiter (In this case “-”) may be different depending on the entry in the settings XML.  The max length for this text field is 50 when selecting a Package or 64 when selecting an Application. |
+| ![Interface2](https://user-images.githubusercontent.com/44309802/135516495-828dd523-1085-400f-831a-1798913ae848.png) | Define which options you would like the tool to create or Select All to create all.  When selecting between Application or Package type, note that the tool was built for Applications.  But some functionality is there for Packages.  (It will create an empty Package with no Programs.) |
+| ![Interface3](https://user-images.githubusercontent.com/44309802/135518438-c4216866-7fa8-4214-8998-35082366bccc.png) | Choose a Deployment type option.<ul><li>Manual.  This is for situations where the tool cannot create the Deployment type by the other means.  You will “manually” create it after the tool sets up everything else.</li><li>MSI.  This is for packages that are simple MSI’s only, with/without a Transform.  Install/Uninstall commands, etc. are built automatically.</li><li>App-V 5.  This is for App-V5 packages.</li><li>Script.  This creates a script-based installer in which you can define the install/uninstall commands.</li></ul> |
+| ![Interface4](https://user-images.githubusercontent.com/44309802/135519626-a210d6bc-8811-4419-b76e-7385deacfea0.png) | The Source folder will be pulled from the Settings XML + the Package name.  The source files must be located in or under this location.<br>When selecting MSI type, the top box will be for the MSI.  The 2nd box for the MST.<br>When selecting AppV5, the top box will be for the AppV.<br>When selecting Script, the top box will be for the Install command.  The 2nd box will be for the Uninstall command.  This will prepopulate with settings from the XML file.<br>Browse allows you to navigate to a file. |
+| ![Interface5](https://user-images.githubusercontent.com/44309802/135519911-9a84335c-ee44-4134-b1c2-6881273ae5d4.png) | If the checkbox for a 2nd Deployment Type is selected for x64, this will allow selection of two sets of MSI/MST’s.  Note that the path is changed slightly to include a “x86” and “x64” folder.  But Browse is available to change it.<br>NOTE: This will create two MSI Deployment Types in SCCM.  But it will not set the Operating System Requirements.  That will have to be a manual setting afterward. |
+|   | *This may confuse some people.  But I used to work at a place with a mixture of 32 and 64-bit systems.  Many times we created a package that contained both versions of installers for a single application.  So this created a single App with 2 Deployment Types.  I have not used this in quite some time.  But decided to leave the feature available in the tool.* |
+| ![Interface6](https://user-images.githubusercontent.com/44309802/135520402-12a6d3e2-765a-4654-a1fc-69a035032ff8.png) | Detection method will be enabled if selecting a Script type.  Will only accept a product code for detection at this time.<br>Browse allows you to navigate to a MSI and import the code.<br>Version information is shown, but not currently incorporated in the detection.<br>Must be in the form of {00000000-0000-0000-0000-000000000000} using only Hexadecimal numbers. |
+| ![Interface7](https://user-images.githubusercontent.com/44309802/135520939-055b53f6-9dc5-4963-a4cc-49be0f3ae722.png) | This displays current Admin categories pulled from SCCM.  Any or multiple can be selected for the App.<br>New button dynamically creates a new category in SCCM and will display it at the bottom of the list. |
+| ![Interface8](https://user-images.githubusercontent.com/44309802/135521400-4281fbf3-0763-4b2b-a343-2b99b668a100.png) | Fields used for Application Catalog settings.<br>Description and Keywords are text fields.<br>Category is a dropdown list.  It also pulls current categories defined in SCCM, and like the admin category, allows you to create New.  Only one can be selected though.<br>Icon file is the file to use for the application icon.  This can be a .ico or .exe.  It cannot use .dll’s.  Browse allows you to navigate to the file.  Once selected, you will see the image of the icon appear on screen.  When selecting an exe, it extracts the image into a png format to %temp%.  After the application is created, this file is removed during cleanup. |
+| ![Interface9](https://user-images.githubusercontent.com/44309802/135521966-95d5438d-dae5-42c6-9051-d918a2bb26c5.png) | If you wish to add machine names to the newly created AD group, check the box and enter them in the text field.<br>If Testers are defined in the settings XML, this will prepopulate with those entries.<br>This is disabled unless AD Group is checked. |
+| ![Interface10](https://user-images.githubusercontent.com/44309802/135522559-7f1e1f14-d121-4959-8849-c297b3d4e5fd.png) | Create button starts the process after all selections have been made.  Once complete, the form will reset.<br>Reset Form resets all the fields and selections to the form’s original state.<br>Quit closes the form. |
+| ![Interface11](https://user-images.githubusercontent.com/44309802/135522850-03f1a0db-ebf0-4023-a10f-b29bd9776a48.png) | This box is read-only and will display messages as progress completes.  Certain actions will perform validation checks in which will display Pass or Fail messages.  Others will just continue on.<br>Clear Log button will reset this display to its original state. |
+
+<a name="example"/>
+
+## Example
+This may look complicated.  But an Application can be created with as little as 3 button clicks.  Here’s an example with only 5…
+
+![Capture1](https://user-images.githubusercontent.com/44309802/135523357-7b18267c-f4b1-41dc-8da1-b280321e539b.png)
+
+1. Enter package name.
+2. Select Script.
+- *In this example we are using the PowerShell Application Deployment Toolkit (which is also another great free tool) for our package.  Install and Uninstall commands are set automatically, imported from the XML.*
+3. Within the package we have an MSI.  Browse to this to import the Product Code for Detection.
+- *I know we could have simply chosen MSI for the Deployment Type.  But I wanted to show a better example, as most cases with packaging, it’s not always simple.*
+4. Here we chose to only import an icon.
+5. Create.
+6. Output is logged as the tool runs.
+
+![Capture2](https://user-images.githubusercontent.com/44309802/135524146-40cc4e51-825a-49c1-9dc5-5a5d9c17920e.PNG)
 
 <a name="personalnote"/>
 
