@@ -13,12 +13,13 @@ In many cases this automates ALL, if not most of, the steps required.
 
 ##### Table of Contents  
 1. [Requirements](#requirements)
-1. [Configuration](#configuration)
-1. [How-to Launch](#howtolaunch)
-1. [How-to Use](#howtouse)
-1. [Example](#example)
-1. [A Personal Note](#personalnote)
-1. [Credits](#credits)
+2. [Configuration](#configuration)
+3. [How-to Launch](#howtolaunch)
+4. [How-to Use](#howtouse)
+5. [Example](#example)
+6. [Troubleshooting](#troubleshooting)
+7. [A Personal Note](#personalnote)
+8. [Credits](#credits)
 
 <a name="requirements"/>
 
@@ -103,7 +104,7 @@ Interface:
 
 ![Interface](https://user-images.githubusercontent.com/44309802/135490308-99556bd1-a2dc-4030-9979-8eb688271877.png)
 
-| <img width=1700/> |  |
+| <img width=2000/> |  |
 | --- | --- |
 | ![Interface1](https://user-images.githubusercontent.com/44309802/135515805-6f82194f-b5e0-494c-bfed-66de6d23af6d.png) | Enter the package name in the textbox.  Must be in the format shown.  The delimiter (In this case “-”) may be different depending on the entry in the settings XML.  The max length for this text field is 50 when selecting a Package or 64 when selecting an Application. |
 | ![Interface2](https://user-images.githubusercontent.com/44309802/135516495-828dd523-1085-400f-831a-1798913ae848.png) | Define which options you would like the tool to create or Select All to create all.  When selecting between Application or Package type, note that the tool was built for Applications.  But some functionality is there for Packages.  (It will create an empty Package with no Programs.) |
@@ -135,6 +136,21 @@ This may look complicated.  But an Application can be created with as little as 
 6. Output is logged as the tool runs.
 
 ![Capture2](https://user-images.githubusercontent.com/44309802/135524146-40cc4e51-825a-49c1-9dc5-5a5d9c17920e.PNG)
+
+<a name="troubleshooting"/>
+
+## Troubleshooting
+Additional validation checks are in place to check user input.  If any fail, an error message will appear on the screen.  Such as.
+
+![error1](https://user-images.githubusercontent.com/44309802/135524858-d7571f39-3829-4f4a-96de-d5d93ab5eaf4.png)
+
+![error2](https://user-images.githubusercontent.com/44309802/135524912-a79a1921-3b31-4c27-8094-e757f2fe8e57.png)
+
+If a step errs during creation of the App, that error should also be displayed in a message window with the full error details.
+
+Some pre-validation checks are also performed at various steps, and if that feature already exists there will be a prompt to Skip or exit.  This allows the packager to continue using the tool even if some steps were already completed.  Or cancel out if it was unintentional.
+
+![warning1](https://user-images.githubusercontent.com/44309802/135525077-522644b7-237e-48c0-9509-88e5fde940c5.png)
 
 <a name="personalnote"/>
 
