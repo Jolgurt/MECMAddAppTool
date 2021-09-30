@@ -30,6 +30,8 @@ In many cases this automates ALL, if not most of, the steps required.
 - SCCMAddAppTool.exe
 - SCCMAddAppSettings.xml
 
+*For reference, the source PowerShell script can be found in the PS1 folder.  It is not required.*
+
 <a name="configuration"/>
 
 ## Configuration
