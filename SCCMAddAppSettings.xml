@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Settings>
+<!--Create Component options-->
+	<!--true/false.  If true, remaining choices are ignored-->
+	<SelectAll>true</SelectAll>
+	<!--true/false-->
+	<CreateAD>true</CreateAD>
+	<!--true/false.  If false, CreateDeployment selection is ignored-->
+	<CreateCollection>true</CreateCollection>
+	<!--true/false-->
+	<CreateDeployment>true</CreateDeployment>
+
+<!--Active Directory options-->
+	<ADDomain></ADDomain>
+	<ADPath>OU=,OU=,DC=,DC=,DC=</ADPath>
+	<!--Valid values are DomainLocal,Global,Universal-->
+	<ADGroupScope>DomainLocal</ADGroupScope>
+	<!--Optional. If not desired, leave blank-->
+	<ADDescription>Software Distribution Group</ADDescription>
+	
+<!--SCCM options-->
+	<Sitecode>:</Sitecode>
+<!--Collection-->
+	<LimitingCollection></LimitingCollection>
+	<!--Folder must live under Device Collections.  User Collections not yet supported-->
+	<CollectionFolder>DeviceCollection\</CollectionFolder>
+	<!--Valid values are Minutes,Hours,Days-->
+	<RefreshInterval>Hours</RefreshInterval>
+	<!--Maximum value per interval: Minutes-59, Hours-23, Days-31-->
+	<RefreshIntCount>1</RefreshIntCount>
+<!--Application-->
+	<ApplicationFolder></ApplicationFolder>
+	<!--Optional. If not desired, leave blank-->
+	<PkgPrefix></PkgPrefix>
+	<!--true/false-->
+	<AllowTaskSeqInstall>true</AllowTaskSeqInstall>
+	<!--Valid values are AutoDownload,DeltaCopy,NoDownload-->
+	<PrestageDP>AutoDownload</PrestageDP>
+<!--Deployment-->
+	<DPGroup></DPGroup>
+	<!--true/false-->
+	<AllowBranchCache>false</AllowBranchCache>
+	<!--Valid values are InstallForUser,InstallForSystem,InstallForSystemIfResourceIsDeviceOtherwiseInstallForUser-->
+	<InstallBehavior>InstallForSystem</InstallBehavior>
+	<!--Minimum value of 15. Maximum 720-->
+	<maxDeployTime>240</maxDeployTime>
+	<!--true/false-->
+	<SendWakeup>true</SendWakeup>
+	<!--Valid values are DisplayAll,DisplaySoftwareCenterOnly,HideAll-->
+	<UserNotification>DisplaySoftwareCenterOnly</UserNotification>
+	<!--Optional. If not desired, leave blank-->
+	<PkgrTestCollection></PkgrTestCollection>
+	
+<!--Installer options-->
+	<PkgDelimiter>-</PkgDelimiter>
+	<PkgFilesFolder></PkgFilesFolder>
+	<MSIargs>REBOOT=ReallySuppress ALLUSERS=1 /qn</MSIargs>
+	<UninstallArgs>REBOOT=ReallySuppress /qn</UninstallArgs>
+	<LogOption>l*v</LogOption>
+	<LogPath></LogPath>
+	<!--Optional. If not desired, leave blank-->
+	<ScriptInstallCMD>Deploy-Application.exe</ScriptInstallCMD>
+	<!--Optional. If not desired, leave blank-->
+	<ScriptUninstallCMD>Deploy-Application.exe -DeploymentType 'Uninstall'</ScriptUninstallCMD>
+	
+<!--User options-->
+	<!--Optional. If not desired, leave blank-->
+	<TestMachines>
+		<Tester User=""></Tester>
+	</TestMachines>
+</Settings>
