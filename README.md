@@ -11,8 +11,17 @@ For instance, if using a package with the name of “Joes_MostGreatSoftware_1.0�
 
 In many cases this automates ALL, if not most of, the steps required.
 
+##### Table of Contents  
+1. [Requirements](#requirements)
+1. [Configuration](#configuration)
+1. [How-to Launch](#howtolaunch)
+1. [How-to Use](#howtouse)
+1. [A Personal Note](#personalnote)
+1. [Credits](#credits)
+
+<a name="requirements"/>
+
 ## Requirements
-*This tool was first written years ago, circa 2016.  It has gone through a few iterations to get to this point.  But I still use it today.*
 - Microsoft .Net Framework 2.0+
 - Microsoft PowerShell 3.0 (minimum); 4.0+ (recommended)
 - Active Directory and SCCM modules, which are included automatically if both AdminTools and Configuration Manager are installed.  *Note: The SCCM cmdlet library may get updated by Microsoft, in which commands within the script may become depreciated or could no longer function.*
@@ -20,6 +29,8 @@ In many cases this automates ALL, if not most of, the steps required.
 #### Files required:
 - SCCMAddAppTool.exe
 - SCCMAddAppSettings.xml
+
+<a name="configuration"/>
 
 ## Configuration
 All custom settings are stored in the settings XML.  This is so the core script does not have to be modified by the user.
@@ -70,6 +81,8 @@ Prior to launching the tool, make sure these settings are defined for the site.
 
 After these are set, they will remain consistent for all packages created for the site.
 
+<a name="howtolaunch"/>
+
 ## How-to Launch
 To run the tool, simply double-click the EXE file or right-click the file and select “Run As”.  The tool must be run with an admin account that has access to make modifications to the relevant areas of both Active Directory and SCCM.
 
@@ -80,8 +93,22 @@ If the script fails to run, first check the Execution Policy on your machine. �
 
 Then try launching the tool again. 
 
+<a name="howtouse"/>
+
 ## How-to Use
 Interface:
 
 ![Interface](https://user-images.githubusercontent.com/44309802/135490308-99556bd1-a2dc-4030-9979-8eb688271877.png)
 
+<a name="personalnote"/>
+
+## A Personal Note
+This tool was first written years ago, circa 2015.  It has gone through a few iterations to get to this point.  But I have not made any significant changes to it in quite some time.  So I realize there could still be room for improvement.  Some things that I DO intend on looking at (pending time and motivation):
+- Importing the settings into the GUI itself.  Something of a File>Settings option that can be customized with form fields rather than directly editing the XML.
+- Detection Method improvements. At the time I included that feature, only Product Code would work.  I'm sure things have changed since then.  So I would like to include File, Registry, and Version checking of the MSI.
+- Requirements.  Nearly the only thing I have to manually set after using AddApp are things like Requirements (by OS, or I have been asked to include Disk Space as a requirement on very large applications).  Assuming I can put in, maybe not all but at least the most common, I might not even have to use SCCM at all.  Imagine that.
+
+<a name="credits"/>
+
+## Credits
+- PS2EXE-GUI by Markus Scholtes (a rework of PS2EXE by Igor Karstein) – Used to compile the AddApp ps1 script into a more user-friendly executable.
