@@ -49,14 +49,16 @@ I have not done extensive testing with this version yet. So lets consider it BET
 <a name="howtolaunch"/>
 
 ## How-to Launch
-Simply right-click the ps1 file and select “Run with PowerShell”.  The tool must be run with an admin account that has access to make modifications to the relevant areas of both Active Directory and SCCM. To run with a different account from the logged-in user you would have to run PowerShell.exe with a “Run As” and then navigate to the ps1.
+To run the tool, simply right-click the ps1 file and select “Run with PowerShell”.
 
-It may take a moment before the GUI loads.  This is normal.
+The tool must be run with an admin account that has access to make modifications to the relevant areas of both Active Directory and MECM.  To run with a different account from the logged-in user you would have to run PowerShell.exe with a “Run As” and then navigate to the ps1.
 
-If the script fails to run, first check the Execution Policy on your machine. – Run Powershell.exe and enter “get-executionpolicy”.  If it returns Restricted then custom scripts cannot execute.  It’s recommended to change this to RemoteSigned by typing “set-executionpolicy remotesigned”.  Then hit Y to confirm.  (Note, you will not have to do this every time.  Setting the policy is permanent.)
+Depending on the Execution Policy set on the device, you may get prompted to continue.  Enter “Y” if so.
+
+Note: If Execution Policy is set to Restricted, then custom scripts cannot execute.  You can verify this by running PowerShell.exe and enter “get-executionpolicy”.  You may also change your Execution Policy using “set-executionpolicy”.  (You will not have to do this every time.  Setting the policy would be permanent.)  PowerShell must be run as an admin.  I recommend researching this for more information.  This policy might also be managed by system administrators.
 ![Xpolicy](https://user-images.githubusercontent.com/44309802/135490059-44949016-2b07-462c-819d-8cb61daae79c.png)
 
-Then try launching the tool again. 
+After launching the ps1, the PowerShell console will then automatically close.  It may take a moment before the GUI loads.  This is normal.  
 
 <a name="configuration"/>
 
