@@ -1,0 +1,49 @@
+##################### Changelog #####################
+Original AddApp script dates back circa 2015
+Changes were not recorded until...
+
+#2.8 - 2/20/2019
+-Added 2nd Deployment Type option for MSI 64-bit
+-Form layout changes
+
+#2.9 - 9/26/2019
+-Removed admin check based on username setting
+-Added RunAs option
+-Added popup when selecting Package model
+
+#2.10 - 3/12/2020
+-Compiled with PS2EXEGUI
+-Set ScriptPath so it can be referenced properly
+-Removed RunAs option
+-Added selections to enable/disable parts of creation: AD/Collection/Deploment or select all
+-Updated a number of true/false conditions and boolean values
+-Fixed multiple Admin Category selections with a join
+-Converted a number of form objects from fixed size to AutoSize
+
+#2.10.1 - 4/29/2020
+-Extended package name max length if selecting App
+-Removed error check on path if script is selected; as it may contain parameters
+
+#2.11 - 8/31/2022
+-Name/code change, "SCCM" replaced with "MECM"
+-Removed PS2EXE (antivirus conflicts)
+-Include ico file independently
+-Added Dbug param, or will recall itself Hidden
+-Fixed mistake setting ScriptPath
+-New Settings Form, do not have to create XML manually
+-Code improvement with Add-FormObj
+-Include MSI version detection
+-Will not load AD module if AD is not selected in settings
+
+#2.11.1 - 9/6/2022 (too much has changed in short amount of time; need to test as a new version)
+-Added detection methods for File and Registry
+-Include license.txt
+-Added Manual as a refresh option on collections
+-Update Help>About
+-Added a few status strip messages
+-Readded RunAs option from 2.9
+-Using map drive for icon image extraction rather than copy to temp (faster)
+-Minor code cleanups
+
+#2.11.2 - 9/14/2022
+-Fixes on detection method code
