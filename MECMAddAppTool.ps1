@@ -19,7 +19,7 @@ $SettingsXML = "$ScriptPath\MECMAddAppSettings.xml"
 $License = "$ScriptPath\LICENSE.txt"
 $PkgNameFormat = "Manufacturer_Product_Version"
 $scriptName = "MECM AddApp Tool"
-$scriptVersion = "2.11.1"
+$scriptVersion = "2.11.2"
 
 ### About
 $about = "*************************************************************************`n"
@@ -308,9 +308,7 @@ Function Main{
                     }
                     switch($DetectionMeth){
                         "MSI"{
-                            if(-not($DetectExist)){
-                                $DetectClauseCMD = "New-CMDetectionClauseWindowsInstaller -ProductCode $ProdCode -Value -PropertyType ProductVersion -ExpressionOperator $DetectComp -ExpectedValue $ProdVersion"
-                            }
+                            if(-not($DetectExist)){$DetectClause = New-CMDetectionClauseWindowsInstaller -ProductCode $ProdCode -Value -PropertyType ProductVersion -ExpressionOperator $DetectComp -ExpectedValue $ProdVersion}
                         }
                         "File"{
                             if($DetectExist){
@@ -318,6 +316,8 @@ Function Main{
                             }else{
                                 $DetectClauseCMD = "New-CMDetectionClauseFile -Path `"$DetectPath`" -FileName `"$DetectItem`" -Value -PropertyType Version -ExpressionOperator $DetectComp -ExpectedValue $ProdVersion"
                             }
+                            if(-not($Detect32on64)){$DetectClauseCMD += " -Is64Bit"}
+                            $DetectClause = Invoke-Expression $DetectClauseCMD
                         }
                         "Registry"{
                             $Hive = 'LocalMachine'
@@ -341,15 +341,15 @@ Function Main{
                             }else{
                                 $DetectClauseCMD = "New-CMDetectionClauseRegistryKeyValue -Hive $Hive -KeyName `"$DetectPath`" -ValueName `"$DetectItem`" -Value -PropertyType Version -ExpressionOperator $DetectComp -ExpectedValue $ProdVersion"
                             }
+                            if(-not($Detect32on64)){$DetectClauseCMD += " -Is64Bit"}
+                            $DetectClause = Invoke-Expression $DetectClauseCMD
                         }
                     }
-                    if(-not($Detect32on64)){$DetectClauseCMD += " -Is64Bit"}
                     $Error.Clear()
                     #MSI Exist can go straight into creating the DT.  All others have a Detection Clause.
                     if($DetectionMeth -eq "MSI" -and $DetectExist){
                         Add-CMScriptDeploymentType -ApplicationName $BetaName -DeploymentTypeName $DeploymentType -ContentLocation $SourcePath -Force -Comment $Comment -InstallCommand $InstFileName -UninstallCommand $MSTName -ProductCode $ProdCode -MaximumRuntimeMins $maxDeployTime -InstallationBehaviorType $InstallBehavior
                     }else{
-                        $DetectClause = Invoke-Expression $DetectClauseCMD
                         Add-CMScriptDeploymentType -ApplicationName $BetaName -DeploymentTypeName $DeploymentType -ContentLocation $SourcePath -Force -Comment $Comment -InstallCommand $InstFileName -UninstallCommand $MSTName -AddDetectionClause $DetectClause -MaximumRuntimeMins $maxDeployTime -InstallationBehaviorType $InstallBehavior
                     }
                 }
@@ -2023,6 +2023,7 @@ if(-not($Dbug)){
 }
 
 <###################### TODO
+-update depreciated cmdlets
 -add test user/machines to settings form
 -is it possible to navigate AD in the settings form?
 -Appx?
