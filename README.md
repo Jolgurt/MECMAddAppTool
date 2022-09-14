@@ -11,7 +11,7 @@ For instance, if using a package with the name of â€œJoes_MostGreatSoftware_1.0â
 
 In many cases this automates most, if not all, the steps required.
 
-## 2.11.1 Release
+## 2.11 Release
 I have not done extensive testing with this version yet. So lets consider it BETA still. But there are significant updates applied which I thought was worth publishing. Previous version saved in 2.10 folder.
 <ul>
 <li>No longer need to create a Settings XML file. The tool will generate the XML upon first launch by prompting a form dialog to fill out. Afterwards it can be modified in the UI through File>Settings.</li>
