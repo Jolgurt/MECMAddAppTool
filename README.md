@@ -129,4 +129,4 @@ Additional troubleshooting may be done by running the tool in debug mode.  This 
 <a name="personalnote"/>
 
 ## A Personal Note
-This tool was first written years ago, circa 2015.  It has gone through a few iterations to get to this point and mainly fitting needs as I've crossed them.  But I realize there could still be room for improvement.
+This script was first written years ago, circa 2015.  It has gone through a few iterations to get to this point and mainly fitting needs as I've crossed them.  I realize there is still room for improvement.  And there are things I may still address as time and motivation arises.  Thanks.
