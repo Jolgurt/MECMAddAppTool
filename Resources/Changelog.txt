@@ -1,6 +1,13 @@
 ##################### Changelog #####################
 Original AddApp script dates back circa 2015
-Changes were not recorded until...
+Recorded changes...
+
+#2.6 - 5/24/2018
+-Added option to define Package Delimiter
+-Updated code to check for special characters in user input
+
+#2.7 - 11/7/2018
+-Added an Available deployment to a Test Collection
 
 #2.8 - 2/20/2019
 -Added 2nd Deployment Type option for MSI 64-bit
@@ -47,3 +54,25 @@ Changes were not recorded until...
 
 #2.11.2 - 9/14/2022
 -Fixes on detection method code
+
+#2.12 - 11/8/2022
+-Current versions of ConfigMan add to path.  Updated import-module call and prereq check.
+-Moved Check-Prereqs code
+-Fixed a null check on refresh interval
+-Added Comment options to settings
+
+#2.13 - 3/15/2023
+-Code improvements
+-Removed many global variables
+-Reorganized menus + form layout
+-Removed the x86/x64 dual Deployment Types
+-Reconfigured AppCatalog section to be focused more to Software Center: Removed Keywords + User Category; Added Localized App Name
+-Added bat file launchers
+-Decluttered by moving other files into Resources subfolder
+-Removed PowerShell version check. 3.0 has been out for about 10 years. Probably safe to assume everyone has it.
+-Tighten: Will check for settings in Resources, otherwise will divert to %appdata%. This allows running tool in readonly location.
+-Added TestMachines to Settings; Removed option to set machines per user
+-Removed PkgPrefix
+-Added option to set the Install deployment to either Available or Required
+-Expanded the capabilities of Add-FormObj to greatly reduce code
+-Corrected the dropdown for (Detection method) Comparator combobox to not be editable
