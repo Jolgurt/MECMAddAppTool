@@ -11,11 +11,12 @@ For instance, if using a package with the name of â€œJoes_MostGreatSoftware_1.0â
 
 In many cases this automates most, if not all, the steps required.
 
-## 2.11 Notes
+## 2.13 Notes
 <ul>
-<li>No longer need to create a Settings XML file. The tool will generate the XML upon first launch by prompting a form dialog to fill out. Afterwards it can be modified in the UI through File>Settings.</li>
-<li>Added more detection methods, including File, Registry, and version specific checks.</li>
-<li>Some modernization with replacing SCCM with MECM throughout</li>
-<li>Done away with the PS2EXE option. Unfortunately antivirus keeps picking it up as a false-positive. Only offering now as the PS1.</li>
-<li>Fair amount of code cleanup and improvements.</li>
+<li>Code improvements</li>
+<li>Reorganized menus and form layout</li>
+<li>Added bat file launchers</li>
+<li>Added option to set the Install deployment to either Available or Required</li>
+<li>Done away with a few insignificant/rarely used options</li>
+<li>Fixed a few oversights with Form behavior</li>
 </ul>
