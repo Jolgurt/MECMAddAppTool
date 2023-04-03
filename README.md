@@ -17,8 +17,8 @@ In many cases this automates most, if not all, the steps required.
 <li>Added 2nd Detection method clause</li>
 <li>Set to convert "C:\Program Files" or "C:\Program Files (x86)" to %ProgramFiles% when using File detection Browse</li>
 <li>Set File version when using File detection Browse</li>
-<li>Removed depreciated BrachCache setting</li>
-<li>Updated depreciated cmdlet Start-CMApplicationDeployment to New-CMApplicationDeployment</li>
+<li>Removed deprecated BrachCache setting</li>
+<li>Updated deprecated cmdlet Start-CMApplicationDeployment to New-CMApplicationDeployment</li>
 <li>Code improvements</li>
 <li>Added Disk Space Requirement</li>
 <li>Added highlight to required Text fields if set empty</li>
