@@ -1,13 +1,6 @@
 ##################### Changelog #####################
 Original AddApp script dates back circa 2015
-Recorded changes...
-
-#2.6 - 5/24/2018
--Added option to define Package Delimiter
--Updated code to check for special characters in user input
-
-#2.7 - 11/7/2018
--Added an Available deployment to a Test Collection
+Noted changes...
 
 #2.8 - 2/20/2019
 -Added 2nd Deployment Type option for MSI 64-bit
@@ -22,7 +15,7 @@ Recorded changes...
 -Compiled with PS2EXEGUI
 -Set ScriptPath so it can be referenced properly
 -Removed RunAs option
--Added selections to enable/disable parts of creation: AD/Collection/Deploment or select all
+-Added selections to enable/disable parts of creation: AD/Collection/Deployment or select all
 -Updated a number of true/false conditions and boolean values
 -Fixed multiple Admin Category selections with a join
 -Converted a number of form objects from fixed size to AutoSize
@@ -75,4 +68,15 @@ Recorded changes...
 -Removed PkgPrefix
 -Added option to set the Install deployment to either Available or Required
 -Expanded the capabilities of Add-FormObj to greatly reduce code
--Corrected the dropdown for (Detection method) Comparator combobox to not be editable
+-Corrected the dropdown for (Detection method) Comparator combobox
+
+#2.13.1 - 3/23/2023
+-Form layout change
+-Added 2nd Detection method clause
+-Set to convert "C:\Program Files" or "C:\Program Files (x86)" to %ProgramFiles% when using File detection Browse
+-Set File version when using File detection Browse
+-Removed depreciated BrachCache setting
+-Updated depreciated cmdlet Start-CMApplicationDeployment to New-CMApplicationDeployment
+-Code improvements
+-Added Disk Space Requirement
+-Added highlight to required Text fields if set empty
