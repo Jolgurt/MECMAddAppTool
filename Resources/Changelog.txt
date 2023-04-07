@@ -75,8 +75,11 @@ Noted changes...
 -Added 2nd Detection method clause
 -Set to convert "C:\Program Files" or "C:\Program Files (x86)" to %ProgramFiles% when using File detection Browse
 -Set File version when using File detection Browse
--Removed depreciated BrachCache setting
--Updated depreciated cmdlet Start-CMApplicationDeployment to New-CMApplicationDeployment
+-Removed deprecated BrachCache setting
+-Updated deprecated cmdlet Start-CMApplicationDeployment to New-CMApplicationDeployment
 -Code improvements
 -Added Disk Space Requirement
 -Added highlight to required Text fields if set empty
+
+#2.13.2 - 4/7/2023
+-Fixed a variable that was previously missed
