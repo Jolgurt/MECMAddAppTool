@@ -18,7 +18,7 @@ if(-not($ScriptPath.StartsWith("\\"))){
 
 $PkgNameFormat = "Manufacturer_Product_Version"
 $scriptName = "MECM AddApp Tool"
-$scriptVersion = "2.13.1"
+$scriptVersion = "2.13.2"
 
 ### About
 $about = "*************************************************************************`n"
@@ -139,7 +139,7 @@ Function Main{
         New-ADGroup $FriendlyName -Path $ADPath -GroupScope $ADGroupScope -Description $ADDescription
         if((ErrorChecker) -eq $false){Return}
         #validate
-        if((Validate "Get-ADGroup `"$ADGroup`"") -eq $false){
+        if((Validate "Get-ADGroup `"$FriendlyName`"") -eq $false){
             $Msg = "Failed to create Active Directory group."
             if((ErrorChecker $Msg) -eq $false){Return}
         }
@@ -195,7 +195,7 @@ Function Main{
         }
         if((ErrorChecker) -eq $false){Return}
         if($DoStepAD){
-            $Query = "select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SystemGroupName = ""$ADDomain\\$ADGroup"""
+            $Query = "select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SystemGroupName = ""$ADDomain\\$FriendlyName"""
             Add-CMDeviceCollectionQueryMembershipRule -Collection $Collection -QueryExpression $Query -RuleName $PackageName
         }
         #validate
