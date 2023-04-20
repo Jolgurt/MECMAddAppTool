@@ -1,4 +1,4 @@
-﻿param([switch]$Dbug)
+﻿param([switch]$Dbug,[switch]$Chk4m)
 
 ### Global Variables ###
 # When compiled with PS2EXE the variable MyCommand contains no path
@@ -18,22 +18,17 @@ if(-not($ScriptPath.StartsWith("\\"))){
 
 $PkgNameFormat = "Manufacturer_Product_Version"
 $scriptName = "MECM AddApp Tool"
-$scriptVersion = "2.13.2"
+$scriptVersion = "2.14"
 
 ### About
 $about = "*************************************************************************`n"
 $about += "  ScriptName:   $scriptName`n"
 $about += "  ScriptPath:   $ThisScript`n"
 $about += "  ScriptVersion:  $scriptVersion`n"
-$about += "  Created by:      Joel Chettle`n"
-$about += "  Description:    Creates software groups in Active Directory and`n" 
-$about += " 	           applications/packages in MECM/SCCM, including`n"
-$about += " 	           the collections and deployments if capable, per`n"
-$about += " 	           configurations defined in settings.`n"
-$about += "  Requirements: Must be ran under an account with privileges to AD`n"
-$about += " 	           and MECM.`n"
-$about += " 	           Must have Configuration Manager Console and`n"
-$about += " 	           AdminTools (optional) installed.`n"
+$about += "  ScriptAuthor:   Joel Chettle`n"
+$about += "  Description:    Creates groups in Active Directory and applications`n" 
+$about += " 	           in MECM, including the collections and deployments`n"
+$about += " 	           if capable, per configurations defined in settings.`n"
 $about += "*************************************************************************`n"
 $about += "  Notes:`n"
 $about += "     1] The time it takes to load the form is due mainly to the import`n"
@@ -41,15 +36,14 @@ $about += "         of data from MECM.`n"
 $about += "     2] This tool is meant to automate common conditions. More`n"
 $about += "         features may be added over time. But by no means is it fully`n"
 $about += "         inclusive to all scenarios.`n"
-$about += "*************************************************************************`n`n"
-if(Test-Path "$ScriptPath\LICENSE.txt"){$about += Get-Content "$ScriptPath\LICENSE.txt"}
+$about += "*************************************************************************`n"
+if(Test-Path "$ScriptPath\LICENSE.txt"){$about += (Get-Content "$ScriptPath\LICENSE.txt") -join "`n"}
 
 Function Main{
 ### This function performs the steps to create the Application in AD and MECM when user clicks "Create" button on the GUI ###
     ### Set Variables
     ## From GUI
 	$PackageName = $TextBoxAppName.Text
-    $isApp = $RadioBtnApp.Checked
     $isManual = $RadioBtnManual.Checked
     $isMSI = $RadioBtnMSI.Checked
     $isAppV = $RadioBtnAppV.Checked
@@ -71,7 +65,7 @@ Function Main{
     $2ndDetectComp = $ComboBox2ndComparator.SelectedItem
     $2ndProdVersion = $TextBox2ndProdVersion.Text
     $2ndDetect32on64 = $CheckBox2ndDetect32on64.Checked
-    $AppAdmCat = (($ListViewAdmCategory.CheckedItems |ForEach-Object {$_.name}) -join ',')
+    $AppAdmCat = ($ListViewAdmCategory.CheckedItems |ForEach-Object {$_.name})
     $AppDesc = $TextBoxDesc.Text
     $LocalizedAppName = $TextBoxLocalAppName.Text
     $AppIcon = $TextBoxIcon.Text
@@ -92,17 +86,28 @@ Function Main{
 		default{$Comment = ""}
 	}
     $FriendlyName =  $PackageName.Replace($PkgDelimiter," ")
-    $CollectionName = $PackageName + "-Install"
-    if($isApp){$whatType = "Application"}else{$whatType = "Package"}
+    if($CreateUninstall){$actions = "Install","Uninstall"}
+    else{$actions = "Install"}
     $Manufacturer = $PackageName.Split($PkgDelimiter)[0]
     $Version = $PackageName.Substring($PackageName.IndexOf($PkgDelimiter)+1)
     $Version = $Version.Substring($Version.IndexOf($PkgDelimiter)+1)
-    $TotalSteps = 5
     #adjust total of the progress bar depending on steps required
-    if($isApp){$TotalSteps = $TotalSteps + 1} #cleanup rev history
-    if(-not($isManual)){$TotalSteps = $TotalSteps + 3} #creating deployments
+    $TotalSteps = 3 #at minimum, tool creates/moves App + cleans history
+    if($DoStepAD){ #create AD group(s)
+        $TotalSteps = $TotalSteps + 1
+        if($CreateUninstall){$TotalSteps = $TotalSteps + 1}
+        if($AddPCs){$TotalSteps = $TotalSteps + 1} #adding machines to AD group
+    }
+    if($DoStepCollection){ #create/move collection(s)
+        $TotalSteps = $TotalSteps + 2
+        if($CreateUninstall){$TotalSteps = $TotalSteps + 2}
+    }
+    if(-not($isManual)){$TotalSteps = $TotalSteps + 2} #creating deployment type + distribute content
     if($ReqDiskSpace){$TotalSteps = $TotalSteps + 1} #adding requirement to deptype
-    if($AddPCs){$TotalSteps = $TotalSteps + 1} #adding machines to AD group
+    if($DoStepDeployment){ #create deployment(s)
+        $TotalSteps = $TotalSteps + 1
+        if($CreateUninstall){$TotalSteps = $TotalSteps + 1}
+    }
     $CurrentStep = 0
 
     #Begin...
@@ -120,164 +125,157 @@ Function Main{
     $eap = $ErrorActionPreference
     $ErrorActionPreference = "SilentyContinue"
 #region################ Active Directory block ###################################################
-    if(-not($DoStepAD)){
-        $Skip = $true
-    }else{
-        DM "Creating AD group..." -NNL
-        #check if already exists.  YesNo box to continue.
-        $Skip = $null
-        $Error.Clear()
-        $test = Get-ADGroup $FriendlyName
-        if($Error[0] -eq $null){
-            $Skip = SkipPrompt "Active Directory group" $FriendlyName
-            if($Skip -eq $false){Return}
-        }
-    }
-    #create
-    if(-not($Skip)){
-        $Error.Clear()
-        New-ADGroup $FriendlyName -Path $ADPath -GroupScope $ADGroupScope -Description $ADDescription
-        if((ErrorChecker) -eq $false){Return}
-        #validate
-        if((Validate "Get-ADGroup `"$FriendlyName`"") -eq $false){
-            $Msg = "Failed to create Active Directory group."
-            if((ErrorChecker $Msg) -eq $false){Return}
-        }
-    }
-    $CurrentStep++
-    $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
-
-    #add machines
-    if($AddPCs){
-        DM "Adding machines to AD group..."
-        $PCNames = $PCNames.Replace(" ","").Replace(",",";").Replace("`n",";")
-        foreach($targetPC in ($PCNames.Split(";"))){
-            $ADtarget = $null
-            $ADtarget = Get-ADComputer $targetPC
-            if($ADtarget -eq '' -or $ADtarget -eq $null){
-                DM "$targetPC not found in AD. Skipping." "Orange"
-	        }else{
+    if($DoStepAD){
+        foreach($action in $actions){
+            $GroupName = "$PackageName-$action"
+            DM "Creating $action AD group..." -NNL
+            #check if already exists.  YesNo box to continue.
+            $Skip = $null
+            $test = Get-ADGroup -LDAPFilter "(name=$GroupName)" -SearchBase "$ADPath" -ErrorAction SilentlyContinue
+            if($test -ne $null){
+                $Skip = SkipPrompt "Active Directory group" $GroupName
+                if($Skip -eq $false){Return}
+            }
+            #create
+            if(-not($Skip)){
                 $Error.Clear()
-                Add-ADGroupMember (Get-ADGroup $FriendlyName) $ADtarget
-                if($Error[0] -ne $null){
-                    DM "Error adding $targetPC to AD group. Continuing..." "Red"
+                New-ADGroup $GroupName -Path $ADPath -GroupScope $ADGroupScope -Description "$action App: $FriendlyName"
+                if((ErrorChecker) -eq $false){Return}
+                #validate
+                if((Validate "Get-ADGroup -LDAPFilter `"(name=$GroupName)`" -SearchBase `"$ADPath`"") -eq $false){if((ErrorChecker "Failed to create Active Directory group.") -eq $false){Return}}
+            }
+            $CurrentStep++
+            $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+
+            #add machines
+            if($AddPCs -and $action -eq "Install"){
+                DM "Adding machines to AD group..."
+                $PCNames = $PCNames.Replace(" ","").Replace(",",";").Replace("`n",";")
+                foreach($targetPC in ($PCNames.Split(";"))){
+                    if($targetPC.contains("\")){
+                        $targPCDomain = (Get-ADDomain ($targetPC.split("\")[0])).DNSRoot
+                        $targetPC = $targetPC.split("\")[1]
+                    }else{
+                        $targPCDomain = (Get-ADDomain $ADDomain).DNSRoot
+                    }
+                    $ADtarget = $null
+                    $ADtarget = Get-ADComputer $targetPC -Server $targPCDomain -ErrorAction SilentlyContinue
+                    if($ADtarget -eq $null){
+                        DM "$targetPC not found in AD. Skipping." "Orange"
+	                }else{
+                        $Error.Clear()
+                        Add-ADGroupMember (Get-ADGroup -LDAPFilter "(name=$GroupName)" -SearchBase "$ADPath") $ADtarget
+                        if($Error[0] -ne $null){
+                            DM "Error adding $targetPC to AD group. Continuing..." "Red"
+                        }
+                    }
                 }
+                $CurrentStep++
+                $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
             }
         }
-        $CurrentStep++
-        $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
     }
 #endregion########################################################################################
 #region################ MECM Collection block ####################################################
     Set-Location $Sitecode
-    if(-not($DoStepCollection)){
-        $Skip = $true
-    }else{
+    if($DoStepCollection){
         $CollectionFolder = ".\$CollectionFolder"
-        DM "Creating Collection..." -NNL
-        #check if already exists.  YesNo box to continue.
-        $Skip = $null
-        $test = Get-CMDeviceCollection -Name $CollectionName
-        if($test -ne $null){
-            $Skip = SkipPrompt "Device Collection" $CollectionName
-            if($Skip -eq $false){Return}
-        }
-    }
-    #create
-    if(-not($Skip)){
-        $Error.Clear()
-        if($RefreshInterval -ne "Manual"){
-            $StartTime = [DateTime]"$Date 12:00 AM"
-            $Schedule = New-CMSchedule -RecurCount $RefreshIntCount -RecurInterval $RefreshInterval -Start $StartTime
-            $Collection = New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName $LimitingCollection -Comment $Comment -RefreshSchedule $Schedule
-        }else{
-            $Collection = New-CMDeviceCollection -Name $CollectionName -LimitingCollectionName $LimitingCollection -Comment $Comment -RefreshType $RefreshInterval
-        }
-        if((ErrorChecker) -eq $false){Return}
-        if($DoStepAD){
-            $Query = "select SMS_R_SYSTEM.ResourceID,SMS_R_SYSTEM.ResourceType,SMS_R_SYSTEM.Name,SMS_R_SYSTEM.SMSUniqueIdentifier,SMS_R_SYSTEM.ResourceDomainORWorkgroup,SMS_R_SYSTEM.Client from SMS_R_System where SystemGroupName = ""$ADDomain\\$FriendlyName"""
-            Add-CMDeviceCollectionQueryMembershipRule -Collection $Collection -QueryExpression $Query -RuleName $PackageName
-        }
-        #validate
-        if((Validate "Get-CMDeviceCollection -Name $CollectionName") -eq $false){
-            $Msg = "Failed to create Device Collection."
-            if((ErrorChecker $Msg) -eq $false){Return}
-        }
-        $CurrentStep++
-        $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
         if(-not(Test-Path $CollectionFolder)){
-            DM "Creating folder..."
+            DM "Creating Collection folder..."
             New-Item $CollectionFolder -ItemType directory
             $timeout = 0
             do{Start-Sleep -Seconds 1;$timeout++}while(-not(Test-Path $CollectionFolder) -and $timeout -lt 20)
         }
-        DM "Moving Collection..."
-        $Error.Clear()
-        Move-CMObject -InputObject $Collection -FolderPath $CollectionFolder
-        if((ErrorChecker) -eq $false){DM "Failed to move Collection. Look for it in root folder." "Orange"}
-        $CurrentStep++
-        $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
-    }else{
-        $CurrentStep = $CurrentStep + 2
-        $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+        foreach($action in $actions){
+            $GroupName = "$PackageName-$action"
+            DM "Creating $action Collection..." -NNL
+            #check if already exists.  YesNo box to continue.
+            $Skip = $null
+            $test = Get-CMDeviceCollection -Name $GroupName
+            if($test -ne $null){
+                $Skip = SkipPrompt "Device Collection" $GroupName
+                if($Skip -eq $false){Return}
+            }
+            #create
+            if(-not($Skip)){
+                $Error.Clear()
+                if($RefreshInterval -ne "Manual"){
+                    if($RefreshInterval -eq "Days"){$StartTime = [DateTime]"$Date 12:00 AM"}
+                    else{$StartTime = Get-Date}
+                    $Schedule = New-CMSchedule -RecurCount $RefreshIntCount -RecurInterval $RefreshInterval -Start $StartTime
+                    $Collection = New-CMDeviceCollection -Name $GroupName -LimitingCollectionName $LimitingCollection -Comment $Comment -RefreshSchedule $Schedule
+                }else{
+                    $Collection = New-CMDeviceCollection -Name $GroupName -LimitingCollectionName $LimitingCollection -Comment $Comment -RefreshType $RefreshInterval
+                }
+                if((ErrorChecker) -eq $false){Return}
+                if($DoStepAD){
+                    Add-CMDeviceCollectionQueryMembershipRule -Collection $Collection -QueryExpression "select * from SMS_R_System where SMS_R_System.SecurityGroupName = '$ADDomain\\$GroupName'" -RuleName $PackageName
+                }
+                #validate
+                if((Validate "Get-CMDeviceCollection -Name $GroupName") -eq $false){if((ErrorChecker "Failed to create Device Collection.") -eq $false){Return}}
+                $CurrentStep++
+                $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+                
+                DM "Moving Collection..."
+                $Error.Clear()
+                Move-CMObject -InputObject $Collection -FolderPath $CollectionFolder
+                if((ErrorChecker) -eq $false){DM "Failed to move Collection. Look for it in root folder." "Orange"}
+                $CurrentStep++
+                $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+            }else{
+                $CurrentStep = $CurrentStep + 2
+                $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+            }
+        }
     }
 #endregion########################################################################################
 #region################ MECM Application block ###################################################
-    $ApplicationPath = ".\$whatType\$ApplicationFolder"
-    DM "Creating $whatType..." -NNL
+    $ApplicationPath = ".\Application\$ApplicationFolder"
+    DM "Creating Application..." -NNL
+    
     #check if already exists.  YesNo box to continue.
     $Skip = $null
-    if($isApp){
-        $test = Get-CMApplication -Name $PackageName
-            if($test -ne $null){
-            $Skip = SkipPrompt $whatType $PackageName
-            if($Skip -eq $false){Return}
-        }
-    }else{
-        $test = Get-CMPackage -Name $PackageName
-        if($test -ne $null){
-            $Skip = SkipPrompt $whatType $PackageName
-            if($Skip -eq $false){Return}
-        }
+    $test = Get-CMApplication -Name $PackageName
+    if($test -ne $null){
+        $Skip = SkipPrompt "Application" $PackageName
+        if($Skip -eq $false){Return}
     }
+
     #create
     if(-not($Skip)){
         $Error.Clear()
-        if($isApp){
-            $Application = New-CMApplication -Name $PackageName -Description $Comment -ReleaseDate $Date -AutoInstall $AllowTaskSeqInstall -LocalizedApplicationName $LocalizedAppName -Publisher $Manufacturer -SoftwareVersion $Version
-            Set-CMApplication -Name $PackageName -DistributionPointSetting $PrestageDP
-            if($AppAdmCat -ne "" -and $AppAdmCat -ne $null){
-                Set-CMApplication -Name $PackageName -AppCategories $AppAdmCat
+        $Application = New-CMApplication -Name $PackageName -Description $Comment -ReleaseDate $Date -AutoInstall $AllowTaskSeqInstall -LocalizedApplicationName $LocalizedAppName -Publisher $Manufacturer -SoftwareVersion $Version
+        Set-CMApplication -Name $PackageName -DistributionPointSetting $PrestageDP
+        if($AppAdmCat -ne "" -and $AppAdmCat -ne $null){
+            if($AppAdmCat -is [array]){
+                $AppAdmCatObj = Get-CMCategory -CategoryType AppCategories | ?{$AppAdmCat.contains($_.LocalizedCategoryInstanceName)}
+            }else{
+                $AppAdmCatObj = Get-CMCategory -CategoryType AppCategories -Name $AppAdmCat
             }
-            if($AppDesc -ne "" -and $AppDesc -ne $null){
-                Set-CMApplication -Name $PackageName -LocalizedApplicationDescription $AppDesc
-            }
-            if($AppIcon -ne "" -and $AppIcon -ne $null){
-                Set-CMApplication -Name $PackageName -IconLocationFile $AppIcon
-            }
-            $tester = "Get-CMApplication -Name $PackageName"  
-        }else{
-            $Application = New-CMPackage -Name $PackageName -Description $Comment
-            $tester = "Get-CMPackage -Name $PackageName"
+            Set-CMApplication -Name $PackageName -AddAppCategory $AppAdmCatObj
+        }
+        if($AppDesc -ne "" -and $AppDesc -ne $null){
+            Set-CMApplication -Name $PackageName -LocalizedApplicationDescription $AppDesc
+        }
+        if($AppIcon -ne "" -and $AppIcon -ne $null){
+            Set-CMApplication -Name $PackageName -IconLocationFile $AppIcon
         }
         if((ErrorChecker) -eq $false){Return}
         #validate
-        if((Validate $tester) -eq $false){
-            $Msg = "Failed to create $whatType."
-            if((ErrorChecker $Msg) -eq $false){Return}
-        }
+        if((Validate "Get-CMApplication -Name $PackageName") -eq $false){if((ErrorChecker "Failed to create Application.") -eq $false){Return}}
         $CurrentStep++
         $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+
         if(-not(Test-Path $ApplicationPath)){
             DM "Creating folder..."
             New-Item $ApplicationPath -ItemType directory
             $timeout = 0
             do{Start-Sleep -Seconds 1;$timeout++}while(-not(Test-Path $ApplicationPath) -and $timeout -lt 20)
         }
-        DM "Moving $whatType..."
+        DM "Moving Application..."
         $Error.Clear()
         Move-CMObject -InputObject $Application -FolderPath $ApplicationPath
-        if((ErrorChecker) -eq $false){DM "Failed to move $whatType. Look for it in root folder." "Orange"}
+        if((ErrorChecker) -eq $false){DM "Failed to move Application. Look for it in root folder." "Orange"}
         $CurrentStep++
         $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
     }else{
@@ -285,7 +283,7 @@ Function Main{
         $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
     }
 #endregion########################################################################################
-#region################ MECM Deployment block ####################################################
+#region################ MECM Deployment Type block ###############################################
     if(-not($isManual)){
         DM "Creating Deployment Type..." -NNL
         #check if already exists.  YesNo box to continue.
@@ -338,10 +336,7 @@ Function Main{
                 }
                 $timeout++
             }while($timeout -lt 10)
-            if($test -eq $null){
-                $Msg = "Failed to create Deployment Type."
-                if((ErrorChecker $Msg) -eq $false){Return}
-            }
+            if($test -eq $null){if((ErrorChecker "Failed to create Deployment Type.") -eq $false){Return}}
             #set Requirement
             if($ReqDiskSpace){
                 DM "Adding Requirement..."
@@ -364,41 +359,47 @@ Function Main{
         if((ErrorChecker) -eq $false){Return}
         $CurrentStep++
         $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
-
-        if($DoStepDeployment){
-            DM "Creating Deployment..."
-            $Error.Clear()
-            #for some reason it uses local time for Available and UTC for Deadline. so to get to match, have to add hour difference to Available
-            $UTChourDiff = (New-TimeSpan -Start (Get-Date) -End (Get-Date).ToUniversalTime()).TotalHours
-            New-CMApplicationDeployment -Name $PackageName -CollectionName $CollectionName -Comment $Comment -AvailableDateTime (Get-Date).AddHours($UTChourDiff)  -DeadlineDateTime (Get-Date) -DeployPurpose $InstallPurpose -UserNotification $UserNotification -SendWakeUpPacket $SendWakeup
-            if((ErrorChecker) -eq $false){Return}
-            if($PkgrTestCollection -ne "" -and $PkgrTestCollection -ne $null){
-                New-CMApplicationDeployment -Name $PackageName -CollectionName $PkgrTestCollection -Comment $Comment -AvailableDateTime (Get-Date).AddHours($UTChourDiff)  -DeployPurpose Available -UserNotification $UserNotification
-            }
-        }
-        $CurrentStep++
-        $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
     }else{
         DM "Since Manual was selected you must create the Deployment." "Orange"
     }
 #endregion########################################################################################
-#region################ Application Cleanup block ################################################
-    if($isApp){
-        DM "Cleaning Application Revision History..."
-        #remove all revisions except most current
-        $Revisions = Get-CMApplicationRevisionHistory -Name $PackageName
-        if($Revisions.Count -gt 1){
-            for($Rev=1; $Rev -lt $Revisions.Count; $Rev++){
-                Remove-CMApplicationRevisionHistory -Name $PackageName -Revision $Rev -Force
+#region################ MECM Deployment block ####################################################
+    if($DoStepDeployment){
+        foreach($action in $actions){
+            $GroupName = "$PackageName-$action"
+            DM "Creating $action Deployment..."
+            #for some reason it uses local time for Available and UTC for Deadline. so to get to match, have to add hour difference to Available
+            $UTChourDiff = (New-TimeSpan -Start (Get-Date) -End (Get-Date).ToUniversalTime()).TotalHours
+            $Error.Clear()
+            if($InstallPurpose -eq "Available" -and $action -eq "Install"){
+                New-CMApplicationDeployment -Name $PackageName -CollectionName $GroupName -Comment $Comment -AvailableDateTime (Get-Date).AddHours($UTChourDiff) -DeployPurpose Available -UserNotification $UserNotification
+            }else{
+                New-CMApplicationDeployment -Name $PackageName -CollectionName $GroupName -Comment $Comment -AvailableDateTime (Get-Date).AddHours($UTChourDiff) -DeadlineDateTime (Get-Date) -DeployAction $action -DeployPurpose Required -UserNotification $UserNotification -SendWakeUpPacket $SendWakeup
             }
+            if((ErrorChecker) -eq $false){Return}
+            $CurrentStep++
+            $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
         }
-        $CurrentStep++
-        $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
-        #remove temp icon file
-        if($AppIcon -ne "" -and $AppIcon -ne $null){
-            if((Get-Item $AppIcon).DirectoryName.ToUpper() -eq ($env:TEMP).ToUpper()){
-                Remove-Item $AppIcon -Force | Out-Null
-            }
+        if($PkgrTestCollection -ne "" -and $PkgrTestCollection -ne $null){
+            New-CMApplicationDeployment -Name $PackageName -CollectionName $PkgrTestCollection -Comment $Comment -AvailableDateTime (Get-Date).AddHours($UTChourDiff) -DeployPurpose Available -UserNotification $UserNotification
+        }
+    }
+#endregion########################################################################################
+#region################ Application Cleanup block ################################################
+    DM "Cleaning Application Revision History..."
+    #remove all revisions except most current
+    $Revisions = Get-CMApplicationRevisionHistory -Name $PackageName
+    if($Revisions.Count -gt 1){
+        for($Rev=1; $Rev -lt $Revisions.Count; $Rev++){
+            Remove-CMApplicationRevisionHistory -Name $PackageName -Revision $Rev -Force
+        }
+    }
+    $CurrentStep++
+    $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
+    #remove temp icon file
+    if($AppIcon -ne "" -and $AppIcon -ne $null){
+        if((Get-Item $AppIcon).DirectoryName.ToUpper() -eq ($env:TEMP).ToUpper()){
+            Remove-Item $AppIcon -Force | Out-Null
         }
     }
 #endregion########################################################################################
@@ -452,7 +453,7 @@ param($method,$CodeOrPath,$dExist,$dComp,$dVersion,$d32on64)
     return $dClause
 }
 Function Get-MSIProps{
-## This function gets the Product Code and Version from a given MSI.  Credit for this code from https://winadminnotes.wordpress.com/2010/04/05/accessing-msi-file-as-a-database/
+## This function gets the Product Code and Version from a given MSI.  Some credit for this code from https://winadminnotes.wordpress.com/2010/04/05/accessing-msi-file-as-a-database/
 param($MSIFileName)
     $StatusStripLabel.Text = "Loading MSI"
     $StatusStrip.Update()
@@ -476,8 +477,8 @@ Function Import-Settings{
 ## This function grabs the values from the settings XML entered by the user and stores them in Variables ###
     if(-not(Test-Path $SettingsXML)){Return $false}
     [xml]$Settings = Get-Content $SettingsXML
-    [System.Collections.ArrayList]$AllowNulls = @("ADDescription","ScriptInstallCMD","ScriptUninstallCMD","TestMachines","PkgrTestCollection","RefreshIntCount")
-    [System.Collections.ArrayList]$BooleanVals = @("SelectAll","CreateAD","CreateCollection","CreateDeployment","AllowTaskSeqInstall","SendWakeup")
+    [System.Collections.ArrayList]$AllowNulls = @("ScriptInstallCMD","ScriptUninstallCMD","TestMachines","PkgrTestCollection","RefreshIntCount")
+    [System.Collections.ArrayList]$BooleanVals = @("SelectAll","CreateAD","CreateCollection","CreateDeployment","AllowTaskSeqInstall","SendWakeup","CreateUninstall")
     foreach($XMLSet in ($Settings.Settings.ChildNodes).Name){
         $Value = ($Settings.Settings.$XMLSet).Trim()
         if(($Value -eq "" -or $Value -eq $null) -and -not($AllowNulls.Contains($XMLSet))){
@@ -529,7 +530,7 @@ Function Check-Input{
         ShowBox "Package name contains a space or non-alphanumeric character: $badChar" "Error" "Error"
         Return $false
     }
-    if($isApp){$maxlength=64}else{$maxlength=50}
+    $maxlength=64
     if($PackageName.Length -gt $maxlength){
         ShowBox ("Package name is too long: {0}. Max is {1} characters." -f $PackageName.Length,$maxlength) "Error" "Error"
         Return $false
@@ -542,15 +543,23 @@ Function Check-Input{
         ShowBox "File not valid. Could not locate: $SourcePath\$MSTName" "Error" "Error"
         Return $false
     }
-    if($isApp -and ($LocalizedAppName.Replace(" ","") -eq "" -or $LocalizedAppName -eq $null)){
+    if($LocalizedAppName.Replace(" ","") -eq "" -or $LocalizedAppName -eq $null){
         ShowBox "Software Center Application Name not valid." "Error" "Error"
         Return $false
     }
-    if($isApp -and $AppIcon -ne "" -and -not(Test-Path $AppIcon)){
+    if($AppIcon -ne "" -and -not(Test-Path $AppIcon)){
         ShowBox "Icon not valid. Could not locate: $AppIcon" "Error" "Error"
         Return $false
     }
     if($isScript){
+        if($InstFileName -eq "" -or $InstFileName -eq $null){
+            ShowBox "Install Command not valid." "Error" "Error"
+            Return $false
+        }
+        if($DoStepDeployment -and $CreateUninstall -and ($MSTName -eq "" -or $MSTName -eq $null)){
+            ShowBox "Uninstall Command not valid." "Error" "Error"
+            Return $false
+        }
         if($ProdCode -eq "" -or $ProdCode -eq $null){
             ShowBox "Detection Method $DetectionMeth not valid." "Error" "Error"
             Return $false
@@ -768,17 +777,23 @@ Function Reset-Form{
     $StatusStripLabel.Text = "Loading"
     $StatusStrip.Update()
     Reset-Cats
-    Set-FormToPkg
-    Set-FormToApp
+    Set-FormToNone
+    $TextBoxAppName.Text = ($PkgNameFormat.Replace("_",$PkgDelimiter))
+    $TextBoxLocalAppName.Text = ($TextBoxAppName.Text).Split($PkgDelimiter)[1]
     $CheckBoxSelectAll.Checked = $SelectAll
     $CheckBoxADGroup.Checked = $CreateAD
     $CheckBoxCollection.Checked = $CreateCollection
     $CheckBoxDeployment.Checked = $CreateDeployment
-    $TextBoxAppName.Text = ($PkgNameFormat.Replace("_",$PkgDelimiter))
-    $RadioBtnApp.Checked = $true
-    $RadioBtnPkg.Checked = $false
+    $RadioBtnManual.Checked = $true
+    $RadioBtnMSI.Checked = $false
+    $RadioBtnAppV.Checked = $false
+    $RadioBtnScript.Checked = $false 
+    $TextBoxDesc.Text = ""
+    $TextBoxIcon.Text = ""
+    $PictureBoxIcon.Image = $null
+    $ListViewAdmCategory.CheckedItems |ForEach-Object {$_.Checked = $false}
     Set-FormToOptions
-    $RunButton.Enabled = $true
+    if(-not($Chk4m)){$RunButton.Enabled = $true}
     $ResetButton.Enabled = $true
     $QuitButton.Enabled = $true
     $ProgressBar.Value = 0
@@ -804,18 +819,12 @@ Function Set-FormToOptions{
         $CheckBoxADGroup.Checked = $true
         $CheckBoxCollection.Enabled = $false
         $CheckBoxCollection.Checked = $true
-        $RadioBtnApp.Enabled = $false
-        $RadioBtnApp.Checked = $true
-        $RadioBtnPkg.Enabled = $false
         $CheckBoxDeployment.Enabled = $false
         if(-not($RadioBtnManual.Checked)){$CheckBoxDeployment.Checked = $true}
-        Set-FormToApp
     }
     else{
         $CheckBoxADGroup.Enabled = $true
         $CheckBoxCollection.Enabled = $true
-        $RadioBtnApp.Enabled = $true
-        $RadioBtnPkg.Enabled = $true
         if($CheckBoxCollection.Checked -and -not($RadioBtnManual.Checked)){
             $CheckBoxDeployment.Enabled = $true
             $CheckBoxDeployment.Checked = $CreateDeployment
@@ -827,35 +836,6 @@ Function Set-FormToOptions{
         ResetAndDisable-CheckBox $CheckBoxAddPCs
         ResetAndDisable-TextBox $TextBoxAddPCs
     }
-}
-Function Set-FormToPkg{
-### This function enables/disables required parts of the GUI in relation to creating a Package ###
-    Set-FormToNone
-    $RadioBtnManual.Checked = $true
-    ResetAndDisable-CheckBox $RadioBtnMSI
-    ResetAndDisable-CheckBox $RadioBtnAppV
-    ResetAndDisable-CheckBox $RadioBtnScript
-    $ListViewAdmCategory.Enabled = $false
-    $ListViewAdmCategory.CheckedItems |ForEach-Object {$_.Checked = $false}
-    $NewAdmCatButton.Enabled = $false
-    ResetAndDisable-TextBox $TextBoxLocalAppName
-    ResetAndDisable-TextBox $TextBoxDesc
-    ResetAndDisable-TextBox $TextBoxIcon
-    $BrowseButtonIcon.Enabled = $false
-    $PictureBoxIcon.Image = $null
-}
-Function Set-FormToApp{
-### This function enables/disables required parts of the GUI in relation to creating an Application ###
-    $RadioBtnMSI.Enabled = $true
-    $RadioBtnAppV.Enabled = $true
-    $RadioBtnScript.Enabled = $true
-    $ListViewAdmCategory.Enabled = $true
-    $NewAdmCatButton.Enabled = $true
-    $TextBoxLocalAppName.Text = ($TextBoxAppName.Text).Split($PkgDelimiter)[1]
-    $TextBoxDesc.Enabled = $true
-    $TextBoxLocalAppName.Enabled = $true
-    $TextBoxIcon.Enabled = $true
-    $BrowseButtonIcon.Enabled = $true
 }
 Function Set-FormToDTOptions{
 ### This function enables/disables required parts of the GUI in relation to Deployment Type selection ###
@@ -969,12 +949,12 @@ Function Set-FormToDetectClause1{
 }
 Function Set-RequiredField{
 ### This function highlights required Text fields ###
-#param($field)
     if($this.Enabled -and (($this.Text).Replace(" ","") -eq "" -or $this.Text -eq $null)){$this.BackColor = [System.Drawing.Color]::Pink}
     else{$this.BackColor = [System.Drawing.Color]::Empty}
 }
 Function Reset-Cats{
 ### This function refreshes the Catagory list ###
+    if($Chk4m){return}
     Set-Location $Sitecode
     $ListViewAdmCategory.Items.Clear()
     Get-CMCategory -CategoryType AppCategories | Sort LocalizedCategoryInstanceName | %{
@@ -1064,12 +1044,14 @@ Function Load-Prereqs{
     [void] [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.VisualBasic")
 
     #look for configman module in default location, or assume its loaded in path
-    $ConfigManMod = Join-Path $(Split-Path $env:SMS_ADMIN_UI_PATH) ConfigurationManager.psd1
-    If(Test-Path $ConfigManMod){Import-Module $ConfigManMod}
-    Else{
-        $Error.Clear()
-        Import-Module ConfigurationManager
-        if((ErrorChecker -NoMain) -eq $false){Return}
+    if(-not($Chk4m)){
+        $ConfigManMod = Join-Path $(Split-Path $env:SMS_ADMIN_UI_PATH) ConfigurationManager.psd1
+        If(Test-Path $ConfigManMod){Import-Module $ConfigManMod}
+        Else{
+            $Error.Clear()
+            Import-Module ConfigurationManager
+            if((ErrorChecker -NoMain) -eq $false){Return}
+        }
     }
 
     #check Settings  
@@ -1109,8 +1091,6 @@ $GroupBoxTaskOptions = New-Object System.Windows.Forms.GroupBox
 $CheckBoxSelectAll = New-Object System.Windows.Forms.CheckBox
 $CheckBoxADGroup = New-Object System.Windows.Forms.CheckBox
 $CheckBoxCollection = New-Object System.Windows.Forms.CheckBox
-$RadioBtnApp = New-Object System.Windows.Forms.RadioButton
-$RadioBtnPkg = New-Object System.Windows.Forms.RadioButton
 $CheckBoxDeployment = New-Object System.Windows.Forms.CheckBox
 
 $GroupBoxDepType = New-Object System.Windows.Forms.GroupBox
@@ -1206,6 +1186,7 @@ $EditMenu.Text = "&Edit"
 $miSettings.Text = "&Settings"
 $miSettings.Add_Click({
     SettingsForm
+    Import-Settings
     Reset-Form
 })
 $miQuit.Text = "&Quit"
@@ -1217,17 +1198,12 @@ $miAbout.Add_Click({ShowBox $about "About" "Information"})
 $TextBoxAppName.add_TextChanged({
     Set-RequiredField
     if(-not($RadioBtnManual.Checked)){$LabelSourcePath.Text = Join-Path $PkgFilesFolder $TextBoxAppName.Text}
-    if($RadioBtnApp.Checked){$TextBoxLocalAppName.Text = ($TextBoxAppName.Text).Split($PkgDelimiter)[1]}
+    $TextBoxLocalAppName.Text = ($TextBoxAppName.Text).Split($PkgDelimiter)[1]
 })
 
 $CheckBoxSelectAll.add_Click({Set-FormToOptions})
 $CheckBoxADGroup.add_Click({Set-FormToOptions})
 $CheckBoxCollection.add_Click({Set-FormToOptions})
-$RadioBtnApp.add_Click({Set-FormToApp})
-$RadioBtnPkg.add_Click({
-    ShowBox "This tool was designed primarily for App Model.`nAlthough it will still create a standardized Package, most of the details in MECM will be empty."
-    Set-FormToPkg
-})
 
 $RadioBtnManual.add_Click({Set-FormToNone})
 $RadioBtnMSI.add_Click({Set-FormToDTOptions})
@@ -1382,6 +1358,11 @@ $RunButton.Add_Click({
 $ResetButton.Add_Click({Reset-Form})
 $QuitButton.Add_Click({$Form.Close()})
 
+if($Chk4m){
+    $NewAdmCatButton.Enabled = $false
+    $RunButton.Enabled = $false
+}
+
 $StatusStrip.BackColor = [System.Drawing.Color]::LightSteelBlue
 $StatusStripLabel.Text = "Ready"
 
@@ -1400,12 +1381,10 @@ Add-FormObj 'Label' $null $Form 10 30 0 "Package name:"
 Add-FormObj 'Textbox' $TextBoxAppName $Form 10 50 260
 
 Add-FormObj 'GroupBox' $GroupBoxTaskOptions $Form 10 80 120 "Create:" -ySize 120
-Add-FormObj 'CheckBox' $CheckBoxSelectAll $GroupBoxTaskOptions 10 15 0 "Select All" -Font 'Small'
-Add-FormObj 'CheckBox' $CheckBoxADGroup $GroupBoxTaskOptions 20 33 0 "AD Group" -Font 'Small'
-Add-FormObj 'CheckBox' $CheckBoxCollection $GroupBoxTaskOptions 20 49 0 "Collection" -Font 'Small'
-Add-FormObj 'RadioButton' $RadioBtnApp $GroupBoxTaskOptions 20 65 0 "Application" -Font 'Small'
-Add-FormObj 'RadioButton' $RadioBtnPkg $GroupBoxTaskOptions 20 81 0 "Package" -Font 'Small'
-Add-FormObj 'CheckBox' $CheckBoxDeployment $GroupBoxTaskOptions 20 97 0 "Deployment"  -Font 'Small'
+Add-FormObj 'CheckBox' $CheckBoxSelectAll $GroupBoxTaskOptions 10 20 0 "Select All"
+Add-FormObj 'CheckBox' $CheckBoxADGroup $GroupBoxTaskOptions 20 40 0 "AD Group"
+Add-FormObj 'CheckBox' $CheckBoxCollection $GroupBoxTaskOptions 20 60 0 "Collection"
+Add-FormObj 'CheckBox' $CheckBoxDeployment $GroupBoxTaskOptions 20 80 0 "Deployment"
 
 Add-FormObj 'GroupBox' $GroupBoxDepType $Form 150 80 120 "Deployment Type:" -ySize 120
 Add-FormObj 'RadioButton' $RadioBtnManual $GroupBoxDepType 20 15 0 "Manual"
@@ -1419,26 +1398,26 @@ Add-FormObj 'Button' $ClearButton $Form 625 203 0 "Clear Log"
 
 Add-FormObj 'Label' $null $Form 10 210 0 "Source:"
 Add-FormObj 'Label' $LabelSourcePath $Form 10 230 0
-Add-FormObj 'Textbox' $TextBoxInstFile $Form 10 250 260 -Required
+Add-FormObj 'Textbox' $TextBoxInstFile $Form 10 250 260 -TTipTxt "For MSI or AppV5, this is the relevant msi/appv file`nFor Script, this is the Install command" -Required
 Add-FormObj 'Button' $BrowseBtnInstFile $Form 275 248 0 "Browse"
-Add-FormObj 'Textbox' $TextBoxTransform $Form 10 275 260 -Required
+Add-FormObj 'Textbox' $TextBoxTransform $Form 10 275 260 -TTipTxt "For MSI with Transform, this is the mst file`nFor Script, this is the Uninstall command" -Required
 Add-FormObj 'Button' $BrowseButtonMST $Form 275 273 0 "Browse"
 
 Add-FormObj 'GroupBox' $GroupBoxSoftCenter $Form 360 250 340 "Software Center:" -ySize 150
-Add-FormObj 'Textbox' $TextBoxLocalAppName $GroupBoxSoftCenter 10 20 220 -Required
+Add-FormObj 'Textbox' $TextBoxLocalAppName $GroupBoxSoftCenter 10 20 220 -TTipTxt "Localized Application Name" -Required
 Add-FormObj 'Label' $null $GroupBoxSoftCenter 10 45 0 "Description:"
 Add-FormObj 'RichTextBox' $TextBoxDesc $GroupBoxSoftCenter 10 65 320 -ySize 45
 Add-FormObj 'Label' $null $GroupBoxSoftCenter 10 120 0 "Icon:"
-Add-FormObj 'Textbox' $TextBoxIcon $GroupBoxSoftCenter 45 118 205
+Add-FormObj 'Textbox' $TextBoxIcon $GroupBoxSoftCenter 45 118 205 -TTipTxt "Path to ico or exe file`nDoes not support dlls at this time"
 Add-FormObj 'Button' $BrowseButtonIcon $GroupBoxSoftCenter 255 116 0 "Browse"
 Add-FormObj 'PictureBox' $PictureBoxIcon $GroupBoxSoftCenter 275 15 40 -ySize 40
 
 Add-FormObj 'GroupBox' $GroupBoxDetection $Form 10 310 340 "Detection Method:" -ySize 125
 Add-FormObj 'ComboBox' $ComboBoxDetection $GroupBoxDetection 10 20 70 ('MSI','File','Registry')
-Add-FormObj 'Textbox' $TextBoxProdCode $GroupBoxDetection 10 45 240 -Required
+Add-FormObj 'Textbox' $TextBoxProdCode $GroupBoxDetection 10 45 240 -TTipTxt "For MSI, this is the Product code`nFor File or Registry, this is the relevant path" -Required
 Add-FormObj 'Button' $BrowseBtnDetectMSI $GroupBoxDetection 255 43 0 "Browse"
-Add-FormObj 'RadioButton' $RadioBtnDetectExist $GroupBoxDetection 10 75 0 "Exists"
-Add-FormObj 'RadioButton' $RadioBtnDetectCompare $GroupBoxDetection 70 75 0 " "
+Add-FormObj 'RadioButton' $RadioBtnDetectExist $GroupBoxDetection 10 75 0 "Exists" "For Registry, assumes property as a String"
+Add-FormObj 'RadioButton' $RadioBtnDetectCompare $GroupBoxDetection 70 75 0 " " "Version"
 Add-FormObj 'ComboBox' $ComboBoxComparator $GroupBoxDetection 95 75 100 ('IsEquals','NotEquals','GreaterEquals','GreaterThan','LessEquals','LessThan') -Select 'GreaterEquals'
 Add-FormObj 'Textbox' $TextBoxProdVersion $GroupBoxDetection 200 75 90 -Required
 Add-FormObj 'CheckBox' $CheckBoxDetect32on64 $GroupBoxDetection 10 100 0 "associate with a 32-bit application on 64-bit systems"
@@ -1451,21 +1430,21 @@ Add-FormObj 'RadioButton' $RadioBtn2ndDetectCompare $GroupBox2ndDetection 70 75 
 Add-FormObj 'ComboBox' $ComboBox2ndComparator $GroupBox2ndDetection 95 75 100 ('IsEquals','NotEquals','GreaterEquals','GreaterThan','LessEquals','LessThan') -Select 'GreaterEquals'
 Add-FormObj 'Textbox' $TextBox2ndProdVersion $GroupBox2ndDetection 200 75 90 -Required
 Add-FormObj 'CheckBox' $CheckBox2ndDetect32on64 $GroupBox2ndDetection 10 100 0 "associate with a 32-bit application on 64-bit systems"
-Add-FormObj 'CheckBox' $CheckBox2ndDetect $Form 20 440 0 "AND"
+Add-FormObj 'CheckBox' $CheckBox2ndDetect $Form 20 440 0 "AND" "Create a 2nd Detection Clause joined by AND`n(OR condition is not yet implemented)`nUse Clause buttons to switch between"
 Add-FormObj 'Label' $null $Form 250 440 0 "Clause" -Font 'Small'
 Add-FormObj 'Button' $ButtonClause1 $Form 290 437 20 "1"
 Add-FormObj 'Button' $ButtonClause2 $Form 315 437 20 "2"
 
 Add-FormObj 'GroupBox' $GroupBoxRequirement $Form 10 470 340 "Requirement:" -ySize 45
-Add-FormObj 'CheckBox' $CheckBoxDiskSpace $GroupBoxRequirement 10 20 0 "Disk Space                           MB"
+Add-FormObj 'CheckBox' $CheckBoxDiskSpace $GroupBoxRequirement 10 20 0 "Disk Space                           MB" "Set Free Space requirement for System Drive (in MB)`nPotentially useful for large applications"
 Add-FormObj 'Textbox' $TextBoxDiskSpace $GroupBoxRequirement 105 18 50 -Required
 $TextBoxDiskSpace.BringToFront()
 
 Add-FormObj 'ListView' $ListViewAdmCategory $Form 360 410 165 -ySize 75
 Add-FormObj 'Button' $NewAdmCatButton $Form 360 490 0 "New"
 
-Add-FormObj 'CheckBox' $CheckBoxAddPCs $Form 535 410 0 "Add device(s) to AD group:"
-Add-FormObj 'RichTextBox' $TextBoxAddPCs $Form 535 430 165 -ySize 70 -Required
+Add-FormObj 'CheckBox' $CheckBoxAddPCs $Form 535 410 0 "Add device(s) to AD group:" "Select to add machines to the newly created AD group"
+Add-FormObj 'RichTextBox' $TextBoxAddPCs $Form 535 430 165 -TTipTxt "Enter machine name(s)`nMultiple machines can be separated by new lines`nOr on the same line with comma (,) or semicolons (;)`nSpecify domain if needed in format: Domain\Machine" -ySize 70 -Required
 
 Add-FormObj 'ProgressBar' $ProgressBar $Form 10 525 690
 
@@ -1479,7 +1458,7 @@ $Form.Controls.Add($StatusStrip)
 #Show Form
 if(Import-Settings){Reset-Form}else{Return}
 $Form.Add_Shown({$Form.Activate()})
-[void] $Form.ShowDialog()
+[System.Windows.Forms.Application]::Run($Form)
 }
 #endregion########################################################################################
 
@@ -1490,7 +1469,6 @@ if(-not(Import-Settings)){
     $SelectAll = $true
     $ADPath = 'OU=,DC=,DC=,DC='
     $ADGroupScope = 'DomainLocal'
-    $ADDescription = 'Software Distribution Group'
     $CollectionFolder = 'DeviceCollection\'
     $RefreshInterval = 'Hours'
     $RefreshIntCount = 1
@@ -1502,6 +1480,7 @@ if(-not(Import-Settings)){
     $SendWakeup = $true
     $UserNotification = 'DisplaySoftwareCenterOnly'
     $Comments = 'Date+UserID'
+    $CreateUninstall = $false
     $PkgDelimiter = '_'
     $MSIargs = 'REBOOT=ReallySuppress ALLUSERS=1 /qn'
     $UninstallArgs = 'REBOOT=ReallySuppress /qn'
@@ -1523,7 +1502,6 @@ $SetGroupBoxADoptions = New-Object System.Windows.Forms.GroupBox
 $SetTextBoxADDomain = New-Object System.Windows.Forms.TextBox
 $SetTextBoxADPath = New-Object System.Windows.Forms.TextBox
 $SetComboBoxADGroupScope = New-Object System.Windows.Forms.ComboBox
-$SetTextBoxADDescription = New-Object System.Windows.Forms.TextBox
 $SetTextBoxTestMachines = New-Object System.Windows.Forms.TextBox
 
 $SetGroupBoxMECMoptions = New-Object System.Windows.Forms.GroupBox
@@ -1544,6 +1522,7 @@ $SetComboBoxInstPurpose = New-Object System.Windows.Forms.ComboBox
 $SetCheckBoxSendWakeup = New-Object System.Windows.Forms.CheckBox
 $SetComboBoxUserNotification = New-Object System.Windows.Forms.ComboBox
 $SetTextBoxPkgrTestCollection = New-Object System.Windows.Forms.TextBox
+$SetCheckBoxUninstall = New-Object System.Windows.Forms.CheckBox
 
 $SetGroupBoxPKGoptions = New-Object System.Windows.Forms.GroupBox
 $SetTextBoxPkgDelimiter = New-Object System.Windows.Forms.TextBox
@@ -1657,7 +1636,6 @@ $SetSaveButton.Add_Click({
     $XmlObjectWriter.WriteElementString(“ADDomain”,$SetTextBoxADDomain.Text)
     $XmlObjectWriter.WriteElementString(“ADPath”,$SetTextBoxADPath.Text)
     $XmlObjectWriter.WriteElementString(“ADGroupScope”,$SetComboBoxADGroupScope.SelectedItem)
-    $XmlObjectWriter.WriteElementString(“ADDescription”,$SetTextBoxADDescription.Text)
     $XmlObjectWriter.WriteElementString(“TestMachines”,$SetTextBoxTestMachines.Text)
     $XmlObjectWriter.WriteComment(“MECM options”)
     $XmlObjectWriter.WriteElementString(“Sitecode”,$SetTextBoxSitecode.Text)
@@ -1679,6 +1657,7 @@ $SetSaveButton.Add_Click({
     $XmlObjectWriter.WriteElementString(“SendWakeup”,$SetCheckBoxSendWakeup.Checked)
     $XmlObjectWriter.WriteElementString(“UserNotification”,$SetComboBoxUserNotification.SelectedItem)
     $XmlObjectWriter.WriteElementString(“PkgrTestCollection”,$SetTextBoxPkgrTestCollection.Text)
+    $XmlObjectWriter.WriteElementString(“CreateUninstall”,$SetCheckBoxUninstall.Checked)
     $XmlObjectWriter.WriteComment(“Installer options”)
     $XmlObjectWriter.WriteElementString(“PkgDelimiter”,$SetTextBoxPkgDelimiter.Text)
     $XmlObjectWriter.WriteElementString(“PkgFilesFolder”,$SetTextBoxPkgFilesFolder.Text)
@@ -1719,19 +1698,17 @@ if($SetCheckBoxSelectAll.Checked){
     $SetCheckBoxCreateDeployment.Enabled = $false
 }
 
-Add-FormObj 'GroupBox' $SetGroupBoxADoptions $SettingsForm 10 140 350 "Active Directory options:" -ySize 150
+Add-FormObj 'GroupBox' $SetGroupBoxADoptions $SettingsForm 10 140 350 "Active Directory options:" -ySize 125
 Add-FormObj 'Label' $null $SetGroupBoxADoptions 10 20 0 "Domain:" 
 Add-FormObj 'Textbox' $SetTextBoxADDomain $SetGroupBoxADoptions 240 18 100 $ADDomain "Active Directory domain where the Distribution groups will be created" -Required
 Add-FormObj 'Label' $null $SetGroupBoxADoptions 10 45 0 "OU:"
 Add-FormObj 'Textbox' $SetTextBoxADPath $SetGroupBoxADoptions 160 43 180 $ADPath "The full path to the OU where the groups will be created. In format:`nOU=,OU=,DC=,DC=,DC=" -Required
 Add-FormObj 'Label' $null $SetGroupBoxADoptions 10 70 0 "Group Scope:"
 Add-FormObj 'ComboBox' $SetComboBoxADGroupScope $SetGroupBoxADoptions 240 68 100 ('DomainLocal','Global','Universal') "The Security type defined for the AD group" -Select $ADGroupScope -DisableMouseWheel
-Add-FormObj 'Label' $null $SetGroupBoxADoptions 10 95 0 "Description*:" -Forecolor 'Gray'
-Add-FormObj 'Textbox' $SetTextBoxADDescription $SetGroupBoxADoptions 160 93 180 $ADDescription "Text entered in the Description field for the AD group"
-Add-FormObj 'Label' $null $SetGroupBoxADoptions 10 120 0 "Test Machines*:" -Forecolor 'Gray'
-Add-FormObj 'Textbox' $SetTextBoxTestMachines $SetGroupBoxADoptions 160 118 180 $TestMachines "Machine names to add to the AD group`nSeparate by , or ;"
+Add-FormObj 'Label' $null $SetGroupBoxADoptions 10 95 0 "Test Machines*:" -Forecolor 'Gray'
+Add-FormObj 'Textbox' $SetTextBoxTestMachines $SetGroupBoxADoptions 160 93 180 $TestMachines "Machine names to add to the AD group`nSeparate by , or ;`nSpecify domain if needed in format: Domain\Machine"
 
-Add-FormObj 'GroupBox' $SetGroupBoxMECMoptions $SettingsForm 10 305 350 "MECM options:" -ySize 425
+Add-FormObj 'GroupBox' $SetGroupBoxMECMoptions $SettingsForm 10 280 350 "MECM options:" -ySize 450
 Add-FormObj 'Label' $null $SetGroupBoxMECMoptions 10 20 0 "Sitecode:"
 Add-FormObj 'Textbox' $SetTextBoxSitecode $SetGroupBoxMECMoptions 300 18 40 $Sitecode "MECM site code" -Required
 Add-FormObj 'Label' $null $SetGroupBoxMECMoptions 10 45 0 "Comments:"
@@ -1776,6 +1753,7 @@ Add-FormObj 'Label' $null $SetGroupBoxMECMoptions 10 370 0 "User Notification:"
 Add-FormObj 'ComboBox' $SetComboBoxUserNotification $SetGroupBoxMECMoptions 160 368 180 ('DisplayAll','DisplaySoftwareCenterOnly','HideAll') "Application Deployment setting. User notifications`nDisplay in Software Center and show all notifications,`nDisplay in Software Center and only show notifications for computer restarts,`nor Hide in Software Center and all notifications" -Select $UserNotification -DisableMouseWheel
 Add-FormObj 'Label' $null $SetGroupBoxMECMoptions 10 395 0 "Test Collection*:" -Forecolor 'Gray'
 Add-FormObj 'Textbox' $SetTextBoxPkgrTestCollection $SetGroupBoxMECMoptions 160 393 180 $PkgrTestCollection "Will create an additional Available deployment to this Collection`nThis is intended to be used for package testing"
+Add-FormObj 'CheckBox' $SetCheckBoxUninstall $SetGroupBoxMECMoptions 10 420 330 "Uninstall Deployment" "Will also create Uninstall groups and deployment" -Checked $CreateUninstall -CheckRight
 
 Add-FormObj 'GroupBox' $SetGroupBoxPKGoptions $SettingsForm 10 745 350 "Installer options:" -ySize 245
 Add-FormObj 'Label' $null $SetGroupBoxPKGoptions 10 20 0 "Package Delimiter:"
@@ -1810,6 +1788,7 @@ Add-FormObj 'Label' $null $SettingsForm 10 1055 0 "Closing this window will laun
 #Show Form
 $SettingsForm.Add_Shown({$SettingsForm.Activate()})
 [void] $SettingsForm.ShowDialog()
+$SettingsForm.Dispose()
 }
 #endregion########################################################################################
 
@@ -1837,15 +1816,12 @@ if(-not($Dbug)){
 -is it possible to navigate AD in the settings form?
 -Appx?
 -create AD group, collection, deployment after creating the App?
--option to create an Uninstall deployment
 -add Test Collection to Install collection (include), rather than a 2nd deployment?
 -add option to set behavior (based on return code/no action/enforce reboot)
 -set a default log path?
--add tooltips to Main form?
 -first several params of Add-FormObj are positional; might be easier to read if specified
 -OR detection method
 -browse registry for detection?
 -option to enable interaction?
 -some old var names might need to rename; Transform/MST is also used now for Uninstall CMD; Prodcode is also used for Registry or Files
--AppCategory parameter is depreciated.  is there replacement?
 #>

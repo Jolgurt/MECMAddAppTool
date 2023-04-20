@@ -2,73 +2,20 @@
 Original AddApp script dates back circa 2015
 Noted changes...
 
-#2.8 - 2/20/2019
--Added 2nd Deployment Type option for MSI 64-bit
--Form layout changes
-
-#2.9 - 9/26/2019
--Removed admin check based on username setting
--Added RunAs option
--Added popup when selecting Package model
-
-#2.10 - 3/12/2020
--Compiled with PS2EXEGUI
--Set ScriptPath so it can be referenced properly
--Removed RunAs option
--Added selections to enable/disable parts of creation: AD/Collection/Deployment or select all
--Updated a number of true/false conditions and boolean values
--Fixed multiple Admin Category selections with a join
--Converted a number of form objects from fixed size to AutoSize
-
-#2.10.1 - 4/29/2020
--Extended package name max length if selecting App
--Removed error check on path if script is selected; as it may contain parameters
-
-#2.11 - 8/31/2022
--Name/code change, "SCCM" replaced with "MECM"
--Removed PS2EXE (antivirus conflicts)
--Include ico file independently
--Added Dbug param, or will recall itself Hidden
--Fixed mistake setting ScriptPath
--New Settings Form, do not have to create XML manually
--Code improvement with Add-FormObj
--Include MSI version detection
--Will not load AD module if AD is not selected in settings
-
-#2.11.1 - 9/6/2022 (too much has changed in short amount of time; need to test as a new version)
--Added detection methods for File and Registry
--Include license.txt
--Added Manual as a refresh option on collections
--Update Help>About
--Added a few status strip messages
--Readded RunAs option from 2.9
--Using map drive for icon image extraction rather than copy to temp (faster)
--Minor code cleanups
-
-#2.11.2 - 9/14/2022
--Fixes on detection method code
-
-#2.12 - 11/8/2022
--Current versions of ConfigMan add to path.  Updated import-module call and prereq check.
--Moved Check-Prereqs code
--Fixed a null check on refresh interval
--Added Comment options to settings
-
-#2.13 - 3/15/2023
+#2.14 - 4/18/2023
+-If Collection refresh interval is set to Hours or Minutes, will use the run time of the script as the Start time rather than setting to 12AM.  This is so collections updating throughout the day are more randomized.  And collections that update on Days basis do so overnight.
+-Updated deprecated -AppCategories parameter to -AddAppCategory under Set-CMApplication
 -Code improvements
--Removed many global variables
--Reorganized menus + form layout
--Removed the x86/x64 dual Deployment Types
--Reconfigured AppCatalog section to be focused more to Software Center: Removed Keywords + User Category; Added Localized App Name
--Added bat file launchers
--Decluttered by moving other files into Resources subfolder
--Removed PowerShell version check. 3.0 has been out for about 10 years. Probably safe to assume everyone has it.
--Tighten: Will check for settings in Resources, otherwise will divert to %appdata%. This allows running tool in readonly location.
--Added TestMachines to Settings; Removed option to set machines per user
--Removed PkgPrefix
--Added option to set the Install deployment to either Available or Required
--Expanded the capabilities of Add-FormObj to greatly reduce code
--Corrected the dropdown for (Detection method) Comparator combobox
+-Removed option to create a Package
+-Set main form to run non-modal
+-Changed AD: Name to match Collection name; Description to have friendly name (with spaces); removed option from Settings
+-Added option to create Uninstall deployment
+	-Settings may need to be reSaved in order to update
+-Added some tooltips to main form
+-Updated AD code to be able to add machines in different domains
+
+#2.13.2 - 4/7/2023
+-Fixed a variable that was previously missed
 
 #2.13.1 - 3/23/2023
 -Form layout change
@@ -81,5 +28,61 @@ Noted changes...
 -Added Disk Space Requirement
 -Added highlight to required Text fields if set empty
 
-#2.13.2 - 4/7/2023
--Fixed a variable that was previously missed
+#2.13 - 3/15/2023
+-Code improvements
+-Removed many global variables
+-Reorganized menus + form layout
+-Removed the x86/x64 dual Deployment Types
+-Reconfigured AppCatalog section to be focused more to Software Center: Removed Keywords + User Category; Added Localized App Name
+-Added bat file launchers
+-Decluttered by moving other files into Resources subfolder
+-Removed PowerShell version check. 3.0 has been out for about 10 years. Probably safe to assume everyone has it.
+-Will check for settings in Resources, otherwise will divert to %appdata%. This allows running tool in readonly location.
+-Added TestMachines to Settings; Removed option to set machines per user
+-Removed PkgPrefix
+-Added option to set the Install deployment to either Available or Required
+-Expanded the capabilities of Add-FormObj to greatly reduce code
+-Corrected the dropdown for (Detection method) Comparator combobox
+
+#2.12 - 11/8/2022
+-Current versions of ConfigMan add to path.  Updated import-module call and prereq check.
+-Moved Check-Prereqs code
+-Fixed a null check on refresh interval
+-Added Comment options to settings
+
+#2.11.2 - 9/14/2022
+-Fixes on detection method code
+
+#2.11.1 - 9/6/2022
+-Added detection methods for File and Registry
+-Include license.txt
+-Added Manual as a refresh option on collections
+-Update Help>About
+-Added a few status strip messages
+-Readded RunAs option from 2.9
+-Using map drive for icon image extraction rather than copy to temp (faster)
+-Minor code cleanups
+
+#2.11 - 8/31/2022
+-Name/code change, "SCCM" replaced with "MECM"
+-Removed PS2EXE (antivirus conflicts)
+-Include ico file independently
+-Added Dbug param, or will recall itself Hidden
+-Fixed mistake setting ScriptPath
+-New Settings Form, do not have to create XML manually
+-Code improvement with Add-FormObj
+-Include MSI version detection
+-Will not load AD module if AD is not selected in settings
+
+#2.10.1 - 4/29/2020
+-Extended package name max length if selecting App
+-Removed error check on path if script is selected; as it may contain parameters
+
+#2.10 - 3/12/2020
+-Compiled with PS2EXEGUI
+-Set ScriptPath so it can be referenced properly
+-Removed RunAs option
+-Added selections to enable/disable parts of creation: AD/Collection/Deployment or select all
+-Updated a number of true/false conditions and boolean values
+-Fixed multiple Admin Category selections with a join
+-Converted a number of form objects from fixed size to AutoSize
