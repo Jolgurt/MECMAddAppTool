@@ -11,16 +11,9 @@ For instance, if using a package with the name of â€œJoes_MostGreatSoftware_1.0â
 
 In many cases this automates most, if not all, the steps required.
 
-## 2.14 Notes
+## 2.15 Notes
 <ul>
-<li>If Collection refresh interval is set to Hours or Minutes, will use the run time of the script as the Start time rather than setting to 12AM.  This is so collections updating throughout the day are more randomized.  And collections that update on Days basis do so overnight.</li>
-<li>Updated deprecated -AppCategories parameter to -AddAppCategory under Set-CMApplication</li>
-<li>Code improvements</li>
-<li>Removed option to create a Package</li>
-<li>Set main form to run non-modal</li>
-<li>Changed AD: Name to match Collection name; Description to have friendly name (with spaces); removed option from Settings</li>
-<li>Added option to create Uninstall deployment
-	-Settings may need to be reSaved in order to update</li>
-<li>Added some tooltips to main form</li>
-<li>Updated AD code to be able to add machines in different domains</li>
+<li>Replaced AppV features with AppX/MSIX</li>
+<li>Added option to enable user interaction</li>
+<li>Added option for reboot behavior</li>
 </ul>
