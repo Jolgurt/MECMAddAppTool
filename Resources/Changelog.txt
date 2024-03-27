@@ -2,6 +2,13 @@
 Original AddApp script dates back circa 2015
 Noted changes...
 
+#2.15 - 3/26/2024
+-Replaced AppV features with AppX/MSIX
+-Rename from MECM to MCM
+-Form rework
+-Added option to enable user interaction
+-Added option for reboot behavior
+
 #2.14 - 4/18/2023
 -If Collection refresh interval is set to Hours or Minutes, will use the run time of the script as the Start time rather than setting to 12AM.  This is so collections updating throughout the day are more randomized.  And collections that update on Days basis do so overnight.
 -Updated deprecated -AppCategories parameter to -AddAppCategory under Set-CMApplication
