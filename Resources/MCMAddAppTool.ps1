@@ -18,7 +18,7 @@ if(-not($ScriptPath.StartsWith("\\"))){
 
 $PkgNameFormat = "Manufacturer_Product_Version"
 $scriptName = "MCM AddApp Tool"
-$scriptVersion = "2.15"
+$scriptVersion = "2.15.1"
 
 ### About
 $about = "*************************************************************************`n"
@@ -400,12 +400,6 @@ Function Main{
     }
     $CurrentStep++
     $ProgressBar.Value = $CurrentStep/$TotalSteps * 100
-    #remove temp icon file
-    if($AppIcon -ne "" -and $AppIcon -ne $null){
-        if((Get-Item $AppIcon).DirectoryName.ToUpper() -eq ($env:TEMP).ToUpper()){
-            Remove-Item $AppIcon -Force | Out-Null
-        }
-    }
 #endregion########################################################################################
 
     Reset-Form
@@ -793,8 +787,11 @@ Function Reset-Form{
     $RadioBtnAppX.Checked = $false
     $RadioBtnScript.Checked = $false 
     $TextBoxDesc.Text = ""
-    $TextBoxIcon.Text = ""
     $PictureBoxIcon.Image = $null
+    if((Get-Item $TextBoxIcon.Text -ErrorAction SilentlyContinue).DirectoryName.ToUpper() -eq ($env:TEMP).ToUpper()){
+        Remove-Item $TextBoxIcon.Text -Force | Out-Null
+    }
+    $TextBoxIcon.Text = ""
     $ListViewAdmCategory.CheckedItems |ForEach-Object {$_.Checked = $false}
     Set-FormToOptions
     if(-not($Chk4m)){$RunButton.Enabled = $true}
@@ -1327,7 +1324,10 @@ $BrowseButtonIcon.Add_Click({
             [System.Drawing.Icon]::ExtractAssociatedIcon($IconEXE.FullName).ToBitmap().Save($NewIcon)
             DM "Icon extracted."
             $TextBoxIcon.Text = $NewIcon
-            $PictureBoxIcon.Image = [System.Drawing.Image]::FromFile($NewIcon)
+            $BitMap = New-Object System.Drawing.Bitmap($NewIcon)
+            $BitMapClone = New-Object System.Drawing.Bitmap($BitMap)
+            $PictureBoxIcon.Image = $BitMapClone
+            $BitMap.Dispose()
             Get-PSDrive -Name $NewDrive | Remove-PSDrive
         }elseif($IconFile.ToLower().EndsWith(".ico")){
             $PictureBoxIcon.Image = New-Object System.Drawing.Icon($IconFile)

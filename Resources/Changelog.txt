@@ -2,6 +2,9 @@
 Original AddApp script dates back circa 2015
 Noted changes...
 
+#2.15.1 - 3/29/2024
+-Fixed issue with icon files not getting deleted from temp
+
 #2.15 - 3/26/2024
 -Replaced AppV features with AppX/MSIX
 -Rename from MECM to MCM
