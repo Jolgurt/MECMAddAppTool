@@ -17,3 +17,7 @@ In many cases this automates most, if not all, the steps required.
 <li>Added option to enable user interaction</li>
 <li>Added option for reboot behavior</li>
 </ul>
+## 2.15.1 Notes
+<ul>
+<li>Fixed issue with temp files not getting cleaned up</li>
+</ul>
