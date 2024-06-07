@@ -1,42 +1,28 @@
 ﻿param([switch]$Dbug,[switch]$Chk4m)
 
 ### Global Variables ###
-# When compiled with PS2EXE the variable MyCommand contains no path
-if ($MyInvocation.MyCommand.CommandType -eq "ExternalScript"){ # Powershell script
-    $ThisScript = $MyInvocation.MyCommand.Definition
-}else{ # PS2EXE compiled script
-	$ThisScript = [Environment]::GetCommandLineArgs()[0]
-}
-$ScriptPath = Split-Path -Parent -Path $ThisScript
-#if this is running from a mapped drive, replace the drive letter with the root
+
+#if this is running from a mapped drive, replace the drive letter with the true root
+$ScriptPath = $PSScriptRoot
 if(-not($ScriptPath.StartsWith("\\"))){
-    $ThisScriptRoot = (Get-PSDrive ($ScriptPath.Split(":")[0])).DisplayRoot
-    if($ThisScriptRoot.StartsWith("\\")){
-        $ScriptPath = Join-Path $ThisScriptRoot $ScriptPath.Split(":")[1]
-    }
+    $MappedRoot = (Get-PSDrive ($PSScriptRoot.Split(":")[0])).DisplayRoot
+    if($MappedRoot -ne $null){$ScriptPath = Join-Path $MappedRoot $PSScriptRoot.Split(":")[1]}
 }
 
 $PkgNameFormat = "Manufacturer_Product_Version"
 $scriptName = "MCM AddApp Tool"
-$scriptVersion = "2.15.1"
+$scriptVersion = "2.15.3"
 
 ### About
-$about = "*************************************************************************`n"
+$about = "****************************************************************`n"
 $about += "  ScriptName:   $scriptName`n"
-$about += "  ScriptPath:   $ThisScript`n"
+$about += "  ScriptPath:   $PSCommandPath`n"
 $about += "  ScriptVersion:  $scriptVersion`n"
 $about += "  ScriptAuthor:   Joel Chettle`n"
-$about += "  Description:    Creates groups in Active Directory and applications`n" 
-$about += " 	           in ConfigMgr, including the collections and deployments`n"
-$about += " 	           if capable, per configurations defined in settings.`n"
-$about += "*************************************************************************`n"
-$about += "  Notes:`n"
-$about += "     1] The time it takes to load the form is due mainly to the import`n"
-$about += "         of data from ConfigMgr.`n"
-$about += "     2] This tool is meant to automate common conditions. More`n"
-$about += "         features may be added over time. But by no means is it fully`n"
-$about += "         inclusive to all scenarios.`n"
-$about += "*************************************************************************`n"
+$about += "  Description:    Creates groups in Active Directory and applications in ConfigMgr, including the collections and deployments if capable, per configurations defined in settings.`n"
+$about += "****************************************************************`n"
+$about += "  Notes:    This tool is meant to automate common conditions. More features may be added over time. But by no means is it fully inclusive to all scenarios.`n"
+$about += "****************************************************************`n"
 if(Test-Path "$ScriptPath\LICENSE.txt"){$about += (Get-Content "$ScriptPath\LICENSE.txt") -join "`n"}
 
 Function Main{
@@ -752,7 +738,7 @@ param($extension, $desc)
 	$OpenFileDialog = New-Object System.Windows.Forms.OpenFileDialog
 	$OpenFileDialog.InitialDirectory = $LabelSourcePath.Text
 	$OpenFileDialog.Filter = "$desc ($extension)| $extension"
-	$OpenFileDialog.ShowDialog() | Out-Null
+	$OutNull = $OpenFileDialog.ShowDialog()
 	$OpenFileDialog.Filename
 }
 Function Pop-FileName{
@@ -788,8 +774,8 @@ Function Reset-Form{
     $RadioBtnScript.Checked = $false 
     $TextBoxDesc.Text = ""
     $PictureBoxIcon.Image = $null
-    if((Get-Item $TextBoxIcon.Text -ErrorAction SilentlyContinue).DirectoryName.ToUpper() -eq ($env:TEMP).ToUpper()){
-        Remove-Item $TextBoxIcon.Text -Force | Out-Null
+    if($TextBoxIcon.Text -ne "" -and $TextBoxIcon.Text -ne $null -and (Get-Item $TextBoxIcon.Text -ErrorAction SilentlyContinue).DirectoryName.ToUpper() -eq ($env:TEMP).ToUpper()){
+        $OutNull = Remove-Item $TextBoxIcon.Text -Force
     }
     $TextBoxIcon.Text = ""
     $ListViewAdmCategory.CheckedItems |ForEach-Object {$_.Checked = $false}
@@ -970,7 +956,7 @@ Function Reset-Cats{
         $LI = New-Object system.Windows.Forms.ListViewItem
         $LI.Name = $_.LocalizedCategoryInstanceName
 		$LI.Text = $_.LocalizedCategoryInstanceName
-        $ListViewAdmCategory.Items.add($LI) | Out-Null
+        $OutNull = $ListViewAdmCategory.Items.add($LI)
     }
     Set-Location $env:SystemDrive
 }
@@ -981,7 +967,7 @@ param($CatType)
     if($NewCat -ne "" -and $NewCat -ne $null){
         Set-Location $Sitecode
         $Error.Clear()
-        New-CMCategory -CategoryType $CatType -Name $NewCat | Out-Null
+        $OutNull = New-CMCategory -CategoryType $CatType -Name $NewCat
         if($Error[0] -ne $null){
             DM "Error creating Category: $NewCat" "Red"
             ShowBox $Error[0].Exception "Error" "Error"
@@ -995,16 +981,13 @@ param($CatType)
 }
 Function Add-FormObj{
 ### This function reduces excessive code by dynamically creating Form objects along with various definitions ###
-param($fComponent, $fObj, $ParentObj, $x, $y, $xSize, $Txt=$null, $TTipTxt=$null, $Forecolor=$null, $Select=$null, [switch]$DisableMouseWheel, $Checked=$false, [switch]$CheckRight, $Font=$null, $ySize=20, [switch]$Required)
+param($fComponent, $fObj, $ParentObj, $x, $y, $xSize, $Txt=$null, $TTipTxt=$null, $Forecolor=$null, $Select=$null, [switch]$DisableMouseWheel, $Checked=$false, [switch]$CheckRight, $Font=$null, $ySize=20, [switch]$Required, [switch]$MenuItem)
     if($fObj -eq $null){$DynamicObj = New-Object System.Windows.Forms.$fComponent}
     else{$DynamicObj = $fObj}
 
-    $DynamicObj.Location = New-Object System.Drawing.Size($x,$y)
-    if($xSize -eq 0){$DynamicObj.AutoSize = $True}
-    else{$DynamicObj.Size = New-Object System.Drawing.Size($xSize,$ySize)}
     if($Txt){
         if($fComponent -eq 'ComboBox'){
-            $Txt | %{$DynamicObj.Items.add($_) | Out-Null}
+            $Txt | %{$OutNull = $DynamicObj.Items.add($_)}
             if($Select){
                 for($i=0;$i-le $DynamicObj.Items.Count-1;$i++){
                     if($DynamicObj.Items[$i] -eq $Select){$DynamicObj.SelectedIndex = $i}
@@ -1018,26 +1001,37 @@ param($fComponent, $fObj, $ParentObj, $x, $y, $xSize, $Txt=$null, $TTipTxt=$null
         'Bold'{$DynamicObj.Font = New-Object System.Drawing.Font($DynamicObj.Font.Name,$DynamicObj.Font.Size,[System.Drawing.FontStyle]::Bold)}
         default{}
     }
-    if($TTipTxt){
-        $SetTooltip = New-Object System.Windows.Forms.ToolTip
-        $SetTooltip.SetToolTip($DynamicObj,$TTipTxt)
-    }
-    switch -Wildcard ($fComponent){
-        'CheckBox'{
-            $DynamicObj.Checked = $Checked
-            if($CheckRight){$DynamicObj.CheckAlign = "TopRight"}
-        }
-        'ComboBox'{$DynamicObj.DropDownStyle = 'DropDownList'}
-        '*TextBox'{if($Required){$DynamicObj.Add_TextChanged({Set-RequiredField})}}
-    }
     if($DisableMouseWheel){$DynamicObj.Add_Mousewheel({$_.Handled = $true})}
-    $ParentObj.Controls.Add($DynamicObj)
+
+    if($fComponent -eq "ToolStripMenuItem"){
+        if($TTipTxt){$DynamicObj.ToolTipText = $TTipTxt}
+        if($MenuItem){[void]$ParentObj.Items.Add($DynamicObj)}
+        else{[void]$ParentObj.DropDownItems.Add($DynamicObj)}
+    }else{
+        $DynamicObj.Location = New-Object System.Drawing.Size($x,$y)
+        if($xSize -eq 0){$DynamicObj.AutoSize = $True}
+        else{$DynamicObj.Size = New-Object System.Drawing.Size($xSize,$ySize)}
+
+        if($TTipTxt){
+            $SetTooltip = New-Object System.Windows.Forms.ToolTip
+            $SetTooltip.SetToolTip($DynamicObj,$TTipTxt)
+        }
+        switch -Wildcard ($fComponent){
+            'CheckBox'{
+                $DynamicObj.Checked = $Checked
+                if($CheckRight){$DynamicObj.CheckAlign = "TopRight"}
+            }
+            'ComboBox'{$DynamicObj.DropDownStyle = 'DropDownList'}
+            '*TextBox'{if($Required){$DynamicObj.Add_TextChanged({Set-RequiredField})}}
+        }
+        $ParentObj.Controls.Add($DynamicObj)
+    }
 }
 Function Test-WriteAccess{
 ### This function tests whether user has Write access to a directory ###
 param($TestPath)
     $Error.Clear()
-    New-Item -Path "$TestPath\check" -ItemType File | Out-Null
+    $OutNull = New-Item -Path "$TestPath\check" -ItemType File
     if($Error[0] -ne $null){
         Return $false
     }else{
@@ -1068,7 +1062,7 @@ Function Load-Prereqs{
     if(-not(Test-Path "$WorkingPath\Settings.xml")){
         if(-not(Test-WriteAccess $WorkingPath)){
             $WorkingPath = "$env:APPDATA\MCMAddAppTool"
-            if(-not(Test-Path $WorkingPath)){New-Item $WorkingPath -ItemType directory | Out-Null}
+            if(-not(Test-Path $WorkingPath)){$OutNull = New-Item $WorkingPath -ItemType directory}
         }
     }
     $SettingsXML = "$WorkingPath\Settings.xml"
@@ -1180,32 +1174,25 @@ $Form.MaximizeBox = $False
 $Form.KeyPreview = $True
 $Form.Add_KeyDown({if ($_.KeyCode -eq "Escape") {$Form.Close()}})
 if(Test-Path "$ScriptPath\AppIcon.ico"){$Form.Icon = New-Object System.Drawing.Icon("$ScriptPath\AppIcon.ico")}
+$Form.Add_Load({Get-Process | ?{ $_.MainWindowTitle -eq "Loading"} | Stop-Process -Force})
 
 $MainMenu.BackColor = [System.Drawing.Color]::LightSteelBlue
-$FileMenu.Text = "&File"
-$miRunning.Text = "&UR:$env:USERNAME"
 $miRunning.Enabled = $false
-$miRunAs.Text = "&Run As..."
 $miRunAs.Add_Click({
     if((ShowBox "This will close the current window and relaunch with a RunAs dialog.`nContinue?" "Confirm" "Question" -YesNo) -eq "Yes"){
         $Form.Close()
         $Error.Clear()
-        if($Dbug){Start-Process powershell.exe -Verb RunAs -WorkingDirectory $ScriptPath -ArgumentList ('-NoProfile -File "{0}" -Dbug' -f ($ThisScript))}
-        else{Start-Process powershell.exe -Verb RunAs -WorkingDirectory $ScriptPath -ArgumentList ('-NoProfile -WindowStyle hidden -File "{0}" -Dbug' -f ($ThisScript))}
+        if($Dbug){Start-Process powershell.exe -Verb RunAs -WorkingDirectory $ScriptPath -ArgumentList ('-NoProfile -File "{0}" -Dbug' -f ($PSCommandPath))}
+        else{Start-Process powershell.exe -Verb RunAs -WorkingDirectory $ScriptPath -ArgumentList ('-NoProfile -WindowStyle hidden -File "{0}" -Dbug' -f ($PSCommandPath))}
         ErrorChecker -NoMain
     }
 })
-$EditMenu.Text = "&Edit"
-$miSettings.Text = "&Settings"
+$miQuit.Add_Click({$Form.Close()})
 $miSettings.Add_Click({
     SettingsForm
     Import-Settings
     Reset-Form
 })
-$miQuit.Text = "&Quit"
-$miQuit.Add_Click({$Form.Close()})
-$HelpMenu.Text = "&Help"
-$miAbout.Text = "&About"
 $miAbout.Add_Click({ShowBox $about "About" "Information"})
 
 $TextBoxAppName.add_TextChanged({
@@ -1325,6 +1312,7 @@ $BrowseButtonIcon.Add_Click({
             DM "Icon extracted."
             $TextBoxIcon.Text = $NewIcon
             $BitMap = New-Object System.Drawing.Bitmap($NewIcon)
+            #Picturebox will lock the file if it is used for the graphic. So create a clone.
             $BitMapClone = New-Object System.Drawing.Bitmap($BitMap)
             $PictureBoxIcon.Image = $BitMapClone
             $BitMap.Dispose()
@@ -1383,14 +1371,14 @@ $StatusStrip.BackColor = [System.Drawing.Color]::LightSteelBlue
 $StatusStripLabel.Text = "Ready"
 
 #Add Form Objects
-[void]$MainMenu.Items.Add($FileMenu)
-[void]$FileMenu.DropDownItems.Add($miRunning)
-[void]$FileMenu.DropDownItems.Add($miRunAs)
-[void]$FileMenu.DropDownItems.Add($miQuit)
-[void]$MainMenu.Items.Add($EditMenu)
-[void]$EditMenu.DropDownItems.Add($miSettings)
-[void]$MainMenu.Items.Add($HelpMenu)
-[void]$HelpMenu.DropDownItems.Add($miAbout)
+Add-FormObj 'ToolStripMenuItem' $FileMenu $MainMenu -Txt "&File" -MenuItem
+Add-FormObj 'ToolStripMenuItem' $miRunning $FileMenu -Txt "&UR:$env:USERNAME"
+Add-FormObj 'ToolStripMenuItem' $miRunAs $FileMenu -Txt "&Run As..."
+Add-FormObj 'ToolStripMenuItem' $miQuit $FileMenu -Txt "&Quit"
+Add-FormObj 'ToolStripMenuItem' $EditMenu $MainMenu -Txt "&Edit" -MenuItem
+Add-FormObj 'ToolStripMenuItem' $miSettings $EditMenu -Txt "&Settings"
+Add-FormObj 'ToolStripMenuItem' $HelpMenu $MainMenu -Txt "&Help" -MenuItem
+Add-FormObj 'ToolStripMenuItem' $miAbout $HelpMenu -Txt "&About"
 $Form.Controls.Add($MainMenu)
 
 Add-FormObj 'Label' $null $Form 10 30 0 "Package name:" 
@@ -1600,10 +1588,10 @@ $SetComboBoxRefreshInterval.add_SelectedIndexChanged({
         'Hours'{$MaxInt = 23}
         'Days'{$MaxInt = 31}
         'Manual'{$MaxInt = 0
-            $SetComboBoxRefreshIntCount.Items.add($MaxInt) | Out-Null
+            $OutNull = $SetComboBoxRefreshIntCount.Items.add($MaxInt)
         }
     }
-    for($i=1;$i-le $MaxInt;$i++){$SetComboBoxRefreshIntCount.Items.add($i) | Out-Null}
+    for($i=1;$i-le $MaxInt;$i++){$OutNull = $SetComboBoxRefreshIntCount.Items.add($i)}
     $SetComboBoxRefreshIntCount.SelectedIndex = 0
 })
 $SetComboBoxRefreshIntCount.Add_Mousewheel({if(-not($SetComboBoxRefreshIntCount.DroppedDown)){$_.Handled = $true}})
@@ -1746,11 +1734,11 @@ switch($SetComboBoxRefreshInterval.SelectedItem){
     'Hours'{$MaxInt = 23}
     'Days'{$MaxInt = 31}
     'Manual'{$MaxInt = 0
-        $SetComboBoxRefreshIntCount.Items.add($MaxInt) | Out-Null
+        $OutNull = $SetComboBoxRefreshIntCount.Items.add($MaxInt)
     }
 }
 for($i=1;$i-le $MaxInt;$i++){
-	$SetComboBoxRefreshIntCount.Items.add($i) | Out-Null
+	$OutNull = $SetComboBoxRefreshIntCount.Items.add($i)
     if($i -eq $RefreshIntCount){$SetComboBoxRefreshIntCount.SelectedIndex = $i-1}
 }
 Add-FormObj 'ComboBox' $SetComboBoxRefreshIntCount $SetGroupBoxMCMoptions 300 118 40 $null "The count used in conjunction with the Interval type"
@@ -1816,14 +1804,43 @@ $SettingsForm.Dispose()
 ### Start here
 #Recall the script hidden
 if(-not($Dbug)){
-    Write-Host "*******************************************************************************" -ForegroundColor Yellow
-    Write-Host " $scriptName may take a few moments to load depending on environment." -ForegroundColor Yellow
-    Write-Host " Please be patient." -ForegroundColor Yellow
-    Write-Host "*******************************************************************************" -ForegroundColor Yellow
-    Write-Host "This window will self-destruct..."
-    Start-Sleep -Seconds 7
-    Start-Process powershell.exe -ArgumentList ('-NoProfile -WindowStyle hidden -File "{0}" -Dbug' -f ($ThisScript))
+    Start-Process powershell.exe -ArgumentList ('-NoProfile -WindowStyle hidden -File "{0}" -Dbug' -f ($PSCommandPath))
 }else{
+    #Loading screen
+    $Loading = {
+    param($RunFrom)
+        [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing") 
+        [void] [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms")
+        [System.Windows.Forms.Application]::EnableVisualStyles()
+
+        $LoadingForm = New-Object System.Windows.Forms.Form
+        $AddAppIcon = New-Object Windows.Forms.PictureBox
+        $LoadingBar = New-Object System.Windows.Forms.ProgressBar
+
+        $LoadingForm.Text = "Loading"
+        $LoadingForm.Size = New-Object System.Drawing.Size(220,260) 
+        $LoadingForm.StartPosition = "CenterScreen"
+        $LoadingForm.FormBorderStyle = "FixedDialog"
+        $LoadingForm.MaximizeBox = $False
+
+        $AddAppIcon.Location = New-Object System.Drawing.Size(0,0)
+        $AddAppIcon.Size = New-Object System.Drawing.Size(210,210)
+        $AddAppIcon.SizeMode = "StretchImage"
+        $AddAppIcon.Image = [System.Drawing.Image]::FromFile("$RunFrom\AppIcon.ico")
+
+        $LoadingBar.Location = New-Object System.Drawing.Size(0,210)
+        $LoadingBar.Size = New-Object System.Drawing.Size(205,10)
+        $LoadingBar.Style = "Marquee"
+
+        $LoadingForm.Controls.Add($AddAppIcon)
+        $LoadingForm.Controls.Add($LoadingBar)
+
+        $LoadingForm.Add_Shown({$LoadingForm.Activate()})
+        [void] $LoadingForm.ShowDialog()
+        $LoadingForm.Dispose()
+    }
+    $OutNull = Start-Job -ScriptBlock $Loading -ArgumentList $ScriptPath -Name "AddAppLoading"
+    #load settings/prereqs
     $SettingsXML = Load-Prereqs
     if(Test-Path $SettingsXML){
         #launch GUI
@@ -1831,6 +1848,7 @@ if(-not($Dbug)){
     }else{
         ShowBox "Settings file must exist in order to use this tool and one was not found.`nMake sure you have write access to $SettingsXML" "Error" "Error"
     }
+    Get-Job -Name "AddAppLoading" -ErrorAction SilentlyContinue | Remove-Job -Force
 }
 
 <###################### TODO

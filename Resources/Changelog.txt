@@ -1,6 +1,14 @@
 ##################### Changelog #####################
 Original AddApp script dates back circa 2015
-Noted changes...
+Noted changes since version 2.10...
+
+#2.15.3 - 5/31/2024
+-Removed extra processing from Out-Null pipelines
+-Improved Add-FormObj function to include menu items
+-Added Loading screen
+
+#2.15.2 - 4/10/2024
+-Minor code improvement: Making use of automatic variables
 
 #2.15.1 - 3/29/2024
 -Fixed issue with icon files not getting deleted from temp
