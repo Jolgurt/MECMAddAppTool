@@ -11,13 +11,8 @@ For instance, if using a package with the name of â€œJoes_MostGreatSoftware_1.0â
 
 In many cases this automates most, if not all, the steps required.
 
-## 2.15 Notes
+## 2.15.3 Notes
 <ul>
-<li>Replaced AppV features with AppX/MSIX</li>
-<li>Added option to enable user interaction</li>
-<li>Added option for reboot behavior</li>
-</ul>
-## 2.15.1 Notes
-<ul>
-<li>Fixed issue with temp files not getting cleaned up</li>
-</ul>
+<li>Removed extra processing from Out-Null pipelines</li>
+<li>Improved Add-FormObj function to include menu items</li>
+<li>Added Loading screen</li>
